@@ -553,7 +553,7 @@
 
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
-            const vaultInventory = data.profileInventory.data.items;
+            const vaultInventory = data.profileInventory?.data?.items || [];
 
             const vaultCard = document.createElement('div');
             vaultCard.className = 'character-card';
@@ -628,11 +628,11 @@
             let title;
 
             if (characterId === 'vault') {
-                inventory = data.profileInventory.data.items;
+                inventory = data.profileInventory?.data?.items || [];
                 title = 'Inventaire du Coffre';
             } else {
                 const character = data.characters.data[characterId];
-                inventory = data.characterInventories.data[characterId].items;
+                inventory = data.characterInventories?.data?.[characterId]?.items || [];
                 const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
                 title = `Inventaire - ${classMap[character.classType]}`;
             }
