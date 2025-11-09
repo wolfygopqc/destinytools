@@ -333,6 +333,9 @@
             grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 8px;
         }
+        #vaultDisplayContainer {
+            margin-top: 30px;
+        }
 
         .loader {
             border: 4px solid var(--border-color);
@@ -404,6 +407,11 @@
             </div>
         </div>
 
+        <div id="vaultDisplayContainer" class="content-container hidden">
+            <h2>Votre Coffre</h2>
+            <div id="vaultGrid" class="inventory-grid"></div>
+        </div>
+
         <div id="inventoryModal" class="modal-overlay">
             <div class="modal-content">
                 <span id="modalCloseBtn" class="modal-close">&times;</span>
@@ -447,6 +455,8 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         let currentOpenItem = null;
+        const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
+        const vaultGrid = document.getElementById('vaultGrid');
         const errorDisplayDiv = document.createElement('div');
         const perkDefinitionsCache = {};
         const refreshBtn = document.getElementById('refreshBtn');
@@ -483,6 +493,7 @@
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
             }
+            vaultDisplayContainer.classList.add('hidden');
             localStorage.removeItem('destinySession');
             window.location.reload();
         });
@@ -654,22 +665,32 @@
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
             const vaultInventory = data.profileInventory?.data?.items || [];
+            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
-            const vaultCard = document.createElement('div');
-            vaultCard.className = 'character-card';
-            vaultCard.innerHTML = `
-                <div class="character-info">
-                    <h3>Coffre</h3>
-                    <p>Contient ${vaultInventory.length} objets.</p>
-                    <p>Cliquez pour voir le contenu.</p>
-                </div>
-            `;
-            vaultCard.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(https://www.bungie.net/common/destiny2_content/icons/6299343588963060933.jpg)`;
-            vaultCard.addEventListener('click', () => {
-                showInventoryModal('vault', data);
-            });
-            charactersDiv.appendChild(vaultCard);
+            // Display Vault directly on the page
+            if (vaultInventory.length > 0) {
+                vaultGrid.innerHTML = '';
+                vaultInventory.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance?.primaryStat?.value || '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item-slot';
+                    itemElement.innerHTML = `
+                        <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                        <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                    `;
+                    itemElement.addEventListener('click', () => showItemDetailModal(item, data, 'vault'));
+                    vaultGrid.appendChild(itemElement);
+                });
+                vaultDisplayContainer.classList.remove('hidden');
+            } else {
+                vaultDisplayContainer.classList.add('hidden');
+            }
 
+
+            // Display Character Cards
             for (const characterId of characterIds) {
                 const char = characterData[characterId];
                 if (char) {
@@ -739,19 +760,15 @@
         }
 
         function showInventoryModal(characterId, data) {
-            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = data.itemComponents?.instances?.data || {};
             let inventory;
             let title;
 
-            if (characterId === 'vault') {
-                inventory = data.profileInventory?.data?.items || [];
-                title = 'Inventaire du Coffre';
-            } else {
-                const character = data.characters.data[characterId];
-                inventory = data.characterInventories?.data?.[characterId]?.items || [];
-                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                title = `Inventaire - ${classMap[character.classType]}`;
-            }
+            const character = data.characters.data[characterId];
+            inventory = data.characterInventories?.data?.[characterId]?.items || [];
+            const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+            title = `Inventaire - ${classMap[character.classType]}`;
+
             inventoryCharacterName.textContent = title;
             inventoryContentDiv.innerHTML = '';
 
@@ -869,11 +886,6 @@
                 itemDetailBody.innerHTML = bodyHtml;
                 itemDetailModal.classList.add('visible');
 
-                const transferBtn = document.getElementById('transferBtn');
-                if (transferBtn) {
-                    transferBtn.addEventListener('click', transferItemToVault);
-                }
-
             } catch (error) {
                 console.error("Erreur lors de l'affichage des détails de l'objet:", error);
                 itemDetailName.textContent = "Erreur";
@@ -895,16 +907,60 @@
             return data.Response;
         }
 
-        async function transferItemToVault() {
+        async function transferItem(itemId, sourceCharacterId, targetCharacterId) {
             if (!currentOpenItem) return;
 
-            const { item, characterId } = currentOpenItem;
+            const { item, allData } = currentOpenItem;
             const session = getSessionFromCache();
-            const destinyProfile = (await (await fetch(`https://www.bungie.net/Platform/User/GetMembershipsById/${session.membershipId}/-1/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } })).json()).Response.destinyMemberships[0];
+            const destinyProfile = allData.profile.data.userInfo;
 
-            const transferBtn = document.getElementById('transferBtn');
-            transferBtn.disabled = true;
+            const buttons = document.querySelectorAll('#itemActions .action-button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            try {
+                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': BUNGIE_API_KEY,
+                        'Authorization': `Bearer ${session.accessToken}`
+                    },
+                    body: JSON.stringify({
+                        itemReferenceHash: item.itemHash,
+                        stackSize: item.quantity,
+                        transferToVault: targetCharacterId === 'vault',
+                        itemId: itemId,
+                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId, // API needs a valid characterId even for vault->char
+                        membershipType: destinyProfile.membershipType
+                    })
+                });
+                const responseData = await response.json();
+                if (responseData.ErrorCode !== 1) {
+                    throw new Error(responseData.Message);
+                }
+                alert('Objet transféré avec succès !');
+                itemDetailModal.classList.remove('visible');
+                inventoryModal.classList.remove('visible');
+                refreshBtn.click();
+            } catch (error) {
+                alert(`Erreur lors du transfert : ${error.message}`);
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.add('hidden');
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
             transferBtn.textContent = 'Transfert en cours...';
+            const buttons = document.querySelectorAll('#itemActions .action-button');
+            buttons.forEach(btn => btn.disabled = true);
 
             try {
                 const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
@@ -919,6 +975,9 @@
                         transferToVault: true,
                         itemId: item.itemInstanceId,
                         characterId: characterId,
+                        transferToVault: targetCharacterId === 'vault',
+                        itemId: itemId,
+                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId, // API needs a valid characterId even for vault->char
                         membershipType: destinyProfile.membershipType
                     })
                 });
@@ -934,6 +993,7 @@
                 alert(`Erreur lors du transfert : ${error.message}`);
                 transferBtn.disabled = false;
                 transferBtn.textContent = 'Transférer au coffre';
+                buttons.forEach(btn => btn.disabled = false);
             }
         }
 
