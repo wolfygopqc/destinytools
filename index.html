@@ -367,6 +367,7 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         const errorDisplayDiv = document.createElement('div');
+        let refreshIntervalId = null;
 
         loginBtn.addEventListener('click', () => {
             const authUrl = `https://www.bungie.net/fr/OAuth/Authorize?client_id=${BUNGIE_CLIENT_ID}&response_type=code`;
@@ -396,6 +397,9 @@
         };
 
         logoutBtn.addEventListener('click', () => {
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+            }
             localStorage.removeItem('destinySession');
             window.location.reload();
         });
@@ -446,6 +450,9 @@
                 });
 
                 if (!tokenResponse.ok) {
+                    if (refreshIntervalId) {
+                        clearInterval(refreshIntervalId);
+                    }
                     localStorage.removeItem('destinySession');
                     window.location.reload();
                     throw new Error("Session invalide. Veuillez vous reconnecter.");
