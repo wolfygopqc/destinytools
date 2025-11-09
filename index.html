@@ -248,7 +248,7 @@
 
     <script>
         const BUNGIE_CLIENT_ID = "51005";
-        const BUNGIE_API_KEY = "VOTRE_NOUVELLE_CLE_API_SECRETE"; 
+        const BUNGIE_API_KEY = "4daa3e6ece214a81bbb696357c373b77"; // ATTENTION : Remplacez par une NOUVELLE clé secrète !
 
         const loginContainer = document.getElementById('loginContainer');
         const contentContainer = document.getElementById('contentContainer');
@@ -257,6 +257,7 @@
         const profileDataDiv = document.getElementById('profileData');
         const userInfoDiv = document.getElementById('userInfo');
         const charactersDiv = document.getElementById('characters');
+        const errorDisplayDiv = document.createElement('div'); // For displaying errors
         const logoutBtn = document.getElementById('logoutBtn');
 
         loginBtn.addEventListener('click', () => {
@@ -357,8 +358,28 @@
         }
 
         async function getProfileDataWithToken(accessToken, membershipId) {
+            // Helper function to fetch with retries for 5xx errors
+            const fetchWithRetries = async (url, options, retries = 1, delay = 2000) => {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status >= 500 && retries > 0) {
+                        console.warn(`API returned status ${response.status}. Retrying in ${delay / 1000}s... (${retries} retries left)`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return fetchWithRetries(url, options, retries - 1, delay);
+                    }
+                    return response;
+                } catch (error) {
+                    if (retries > 0) {
+                        console.warn(`Fetch failed. Retrying in ${delay / 1000}s... (${retries} retries left)`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return fetchWithRetries(url, options, retries - 1, delay);
+                    }
+                    throw error;
+                }
+            };
+
             try {
-                const userMembershipsResponse = await fetch(`https://www.bungie.net/Platform/User/GetMembershipsById/${membershipId}/-1/`, {
+                const userMembershipsResponse = await fetchWithRetries(`https://www.bungie.net/Platform/User/GetMembershipsById/${membershipId}/-1/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
                 if (!userMembershipsResponse.ok) {
@@ -391,13 +412,13 @@
                 const destinyMembershipId = destinyProfile.membershipId; // This line was causing the error
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,ItemInstances`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,ItemInstances`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
                     }
                 });
-                if (!profileResponse.ok) throw new Error("Impossible de récupérer les données des personnages.");
+                if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
                 displayData(profileData.Response);
@@ -482,8 +503,12 @@
         }
 
         function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden'); // Hide the loader
+            profileDataDiv.classList.add('hidden'); // Hide the data section
             console.error("Une erreur est survenue dans le processus:", error);
-            loadingDiv.innerHTML = `<p style="color: #ff7b7b;">Erreur: ${error.message}. Veuillez rafraîchir la page et réessayer.</p>`;
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
     </script>
 </body>
