@@ -365,6 +365,9 @@
                     if (userMembershipsResponse.status === 403) {
                         throw new Error("Clé API invalide ou manquante (Erreur 403). Veuillez vérifier la variable BUNGIE_API_KEY dans votre code.");
                     }
+                    if (userMembershipsResponse.status >= 500) {
+                        throw new Error("L'API de Bungie rencontre un problème temporaire (Erreur 5xx). Veuillez réessayer dans quelques instants.");
+                    }
                     throw new Error(`Impossible de récupérer les profils de l'utilisateur (Status: ${userMembershipsResponse.status})`);
                 }
 
