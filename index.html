@@ -361,7 +361,7 @@
                 const userMembershipsResponse = await fetch(`https://www.bungie.net/Platform/User/GetMembershipsById/${membershipId}/-1/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
-                if (!userMembershipsResponse.ok) throw new Error("Impossible de récupérer les profils de l'utilisateur.");
+                if (!userMembershipsResponse.ok) throw new Error(`Impossible de récupérer les profils de l'utilisateur (Status: ${userMembershipsResponse.status})`);
 
                 const userMembershipsData = await userMembershipsResponse.json();
                 if (userMembershipsData.ErrorCode !== 1) throw new Error(userMembershipsData.Message);
