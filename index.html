@@ -261,6 +261,21 @@
             font-style: italic;
             color: rgba(240, 240, 240, 0.7);
         }
+        .perks-section {
+            margin-top: 20px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+        .perk-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .perk-item img {
+            width: 48px;
+            height: 48px;
+        }
         .inventory-section {
             margin-bottom: 20px;
         }
@@ -383,6 +398,7 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         const errorDisplayDiv = document.createElement('div');
+        const perkDefinitionsCache = {};
         const refreshBtn = document.getElementById('refreshBtn');
         let refreshIntervalId = null;
 
@@ -673,7 +689,7 @@
         }
 
         function showInventoryModal(characterId, data) {
-            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = data.itemComponents?.instances?.data || {};
             let inventory;
             let title;
 
@@ -700,7 +716,7 @@
             if (weapons.length > 0) {
                 modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
                 weapons.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId] || {};
+                    const instance = itemInstances[item.itemInstanceId] || data.profileInventory?.data?.itemComponents?.instances?.data?.[item.itemInstanceId];
                     const power = instance ? instance.primaryStat.value : '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
                     const itemElement = document.createElement('div');
@@ -709,7 +725,7 @@
                         <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
-                    itemElement.addEventListener('click', () => showItemDetailModal(item));
+                    itemElement.addEventListener('click', () => showItemDetailModal(item, data));
                     inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
                 });
                 modalHtml += '</div></div>';
@@ -718,7 +734,7 @@
             if (armor.length > 0) {
                 modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
                 armor.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId] || {};
+                    const instance = itemInstances[item.itemInstanceId] || data.profileInventory?.data?.itemComponents?.instances?.data?.[item.itemInstanceId];
                     const power = instance ? instance.primaryStat.value : '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
                     const itemElement = document.createElement('div');
@@ -727,7 +743,7 @@
                         <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
-                    itemElement.addEventListener('click', () => showItemDetailModal(item));
+                    itemElement.addEventListener('click', () => showItemDetailModal(item, data));
                     inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
                 });
                 modalHtml += '</div></div>';
@@ -750,27 +766,67 @@
             inventoryModal.classList.add('visible');
         }
 
-        async function showItemDetailModal(item) {
-            const definitionResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/DestinyInventoryItemDefinition/${item.itemHash}/`, {
+        async function showItemDetailModal(item, data) {
+            try {
+                const itemDef = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
+                if (!itemDef) throw new Error("Définition de l'objet introuvable.");
+
+                itemDetailName.textContent = itemDef.displayProperties.name;
+                itemDetailIcon.src = `https://www.bungie.net${itemDef.displayProperties.icon}`;
+                let bodyHtml = `
+                    <p>${itemDef.itemTypeAndTierDisplayName}</p>
+                    <p>${itemDef.displayProperties.description}</p>
+                    <p class="flavor-text">${itemDef.flavorText || ''}</p>
+                `;
+
+                const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || data.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
+
+                if (itemSockets) {
+                    bodyHtml += '<div class="perks-section"><h4>Attributs</h4>';
+                    const perkHashes = itemSockets
+                        .filter(socket => socket.plugHash && socket.isVisible)
+                        .map(socket => socket.plugHash);
+
+                    const perkDefs = await Promise.all(perkHashes.map(hash => getDefinition('DestinyInventoryItemDefinition', hash)));
+
+                    for (const perkDef of perkDefs) {
+                        if (perkDef && perkDef.displayProperties.name && perkDef.itemTypeDisplayName === "Attribut d'arme") {
+                             bodyHtml += `
+                                <div class="perk-item">
+                                    <img src="https://www.bungie.net${perkDef.displayProperties.icon}" />
+                                    <div>
+                                        <strong>${perkDef.displayProperties.name}</strong>
+                                        <p>${perkDef.displayProperties.description}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                    bodyHtml += '</div>';
+                }
+
+                itemDetailBody.innerHTML = bodyHtml;
+                itemDetailModal.classList.add('visible');
+
+            } catch (error) {
+                console.error("Erreur lors de l'affichage des détails de l'objet:", error);
+                itemDetailName.textContent = "Erreur";
+                itemDetailBody.innerHTML = `<p>${error.message}</p>`;
+                itemDetailModal.classList.add('visible');
+            }
+        }
+
+        async function getDefinition(defType, hash) {
+            if (perkDefinitionsCache[hash]) {
+                return perkDefinitionsCache[hash];
+            }
+            const response = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/${defType}/${hash}/`, {
                 headers: { 'X-API-Key': BUNGIE_API_KEY }
             });
-            if (!definitionResponse.ok) {
-                itemDetailName.textContent = "Erreur";
-                itemDetailBody.innerHTML = "<p>Impossible de récupérer les détails de l'objet.</p>";
-                itemDetailModal.classList.add('visible');
-                return;
-            }
-            const definitionData = await definitionResponse.json();
-            const def = definitionData.Response;
-
-            itemDetailName.textContent = def.displayProperties.name;
-            itemDetailIcon.src = `https://www.bungie.net${def.displayProperties.icon}`;
-            itemDetailBody.innerHTML = `
-                <p>${def.itemTypeAndTierDisplayName}</p>
-                <p>${def.displayProperties.description}</p>
-                <p class="flavor-text">${def.flavorText || ''}</p>
-            `;
-            itemDetailModal.classList.add('visible');
+            if (!response.ok) return null;
+            const data = await response.json();
+            perkDefinitionsCache[hash] = data.Response;
+            return data.Response;
         }
 
         function handleApiError(error) {
