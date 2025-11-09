@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Portail Destiny 2</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --primary-color: #2a2a2a;
+            --secondary-color: #1f1f1f;
+            --text-color: #e0e0e0;
+            --accent-color: #4fc3f7;
+            --border-color: #3a3a3a;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            margin: 0;
+        }
+
+        main {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .login-container, .content-container {
+            background-color: var(--primary-color);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #loginBtn {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        #loginBtn:hover {
+            background-color: #81d4fa;
+            transform: scale(1.05);
+        }
+
+        #userInfo {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #characters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .character-card {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: left;
+        }
+
+        .character-card h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .character-card p {
+            margin: 5px 0;
+        }
+
+        .loader {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Portail Destiny 2</h1>
+        <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
+    </header>
+
+    <main>
+        <!-- Section de connexion -->
+        <div id="loginContainer" class="login-container">
+            <h2>Bienvenue, Gardien !</h2>
+            <p>Connectez-vous avec votre compte Bungie.net pour commencer.</p>
+            <button id="loginBtn">Se connecter avec Bungie</button>
+        </div>
+
+        <!-- Section de contenu (cachée au début) -->
+        <div id="contentContainer" class="content-container hidden">
+            <div id="loading" class="hidden">
+                <div class="loader"></div>
+                <p>Chargement de vos données de Gardien...</p>
+            </div>
+
+            <div id="profileData">
+                <div id="userInfo">
+                    <!-- Les infos du profil seront injectées ici -->
+                </div>
+                <h2>Vos Personnages</h2>
+                <div id="characters">
+                    <!-- Les cartes des personnages seront injectées ici -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==================================================================
+        // CONFIGURATION - REMPLACEZ CECI PAR VOS NOUVELLES INFORMATIONS !
+        // ==================================================================
+        const BUNGIE_CLIENT_ID = "51005"; // Remplacez par VOTRE client_id
+        const BUNGIE_API_KEY = "4daa3e6ece214a81bbb696357c373b77"; // Remplacez par VOTRE NOUVELLE clé API
+
+        // ==================================================================
+        // ÉLÉMENTS DU DOM
+        // ==================================================================
+        const loginContainer = document.getElementById('loginContainer');
+        const contentContainer = document.getElementById('contentContainer');
+        const loginBtn = document.getElementById('loginBtn');
+        const loadingDiv = document.getElementById('loading');
+        const profileDataDiv = document.getElementById('profileData');
+        const userInfoDiv = document.getElementById('userInfo');
+        const charactersDiv = document.getElementById('characters');
+
+        // ==================================================================
+        // LOGIQUE D'AUTHENTIFICATION
+        // ==================================================================
+
+        // 1. Rediriger l'utilisateur vers Bungie pour l'autorisation
+        loginBtn.addEventListener('click', () => {
+            const authUrl = `https://www.bungie.net/fr/OAuth/Authorize?client_id=${BUNGIE_CLIENT_ID}&response_type=code`;
+            window.location.href = authUrl;
+        });
+
+        // 2. Au retour sur la page, vérifier si on a un code d'autorisation
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const authCode = urlParams.get('code');
+
+            if (authCode) {
+                // On a un code ! On cache le bouton de login et on affiche le contenu
+                loginContainer.classList.add('hidden');
+                contentContainer.classList.remove('hidden');
+                loadingDiv.classList.remove('hidden');
+                profileDataDiv.classList.add('hidden');
+
+                // Ici, il faudrait échanger le code contre un token d'accès.
+                // ATTENTION: C'est une opération qui devrait se faire sur un serveur backend
+                // pour ne pas exposer votre client_secret. Pour un site statique simple,
+                // on va sauter cette étape et passer directement à la récupération des données publiques.
+                // Pour des actions comme "déplacer un objet", le token est OBLIGATOIRE.
+
+                // Pour cet exemple, nous allons juste simuler la récupération de données.
+                // Dans un vrai projet, vous feriez un appel `fetch` ici pour obtenir le token,
+                // puis un autre pour obtenir les données du profil.
+                console.log("Code d'autorisation reçu:", authCode);
+                alert("Connexion réussie ! L'étape suivante serait de récupérer les données du profil via l'API. Cette fonctionnalité est à construire.");
+                
+                // Simuler un chargement et afficher un exemple
+                setTimeout(showExampleData, 2000);
+            }
+        };
+
+        // ==================================================================
+        // AFFICHAGE DES DONNÉES (EXEMPLE)
+        // ==================================================================
+        
+        // Cette fonction est un exemple. Dans un vrai site, vous utiliseriez `fetch`
+        // pour appeler l'API de Bungie et obtenir les vraies données.
+        function showExampleData() {
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.remove('hidden');
+
+            // Exemple de données de profil
+            userInfoDiv.innerHTML = `
+                <h3>ExempleDeJoueur#1234</h3>
+                <p>Ceci est un exemple. Pour afficher les vraies données, vous devez implémenter les appels à l'API Bungie.</p>
+            `;
+
+            // Exemple de données de personnages
+            charactersDiv.innerHTML = `
+                <div class="character-card">
+                    <h3>Arcaniste</h3>
+                    <p><strong>Lumière :</strong> 1810</p>
+                    <p><strong>Race :</strong> Éveillé</p>
+                    <p><strong>Temps de jeu :</strong> 500 heures</p>
+                </div>
+                <div class="character-card">
+                    <h3>Titan</h3>
+                    <p><strong>Lumière :</strong> 1810</p>
+                    <p><strong>Race :</strong> Humain</p>
+                    <p><strong>Temps de jeu :</strong> 450 heures</p>
+                </div>
+                <div class="character-card">
+                    <h3>Chasseur</h3>
+                    <p><strong>Lumière :</strong> 1810</p>
+                    <p><strong>Race :</strong> Exo</p>
+                    <p><strong>Temps de jeu :</strong> 600 heures</p>
+                </div>
+            `;
+        }
+
+        // Pour aller plus loin, vous devrez implémenter des fonctions comme celle-ci :
+        /*
+        async function getBungieProfile(authCode) {
+            // 1. Échanger le 'authCode' contre un 'access_token' (nécessite un serveur pour la sécurité)
+            // POST https://www.bungie.net/Platform/App/OAuth/Token/
+
+            // 2. Utiliser le token pour obtenir les infos du profil
+            // GET https://www.bungie.net/Platform/Destiny2/{membershipType}/Profile/{destinyMembershipId}/
+            const response = await fetch('URL_API_BUNGIE', {
+                method: 'GET',
+                headers: {
+                    'X-API-Key': BUNGIE_API_KEY,
+                    'Authorization': `Bearer VOTRE_ACCESS_TOKEN`
+                }
+            });
+            const data = await response.json();
+            
+            // 3. Utiliser les données pour remplir la page
+            // ...
+        }
+        */
+
+    </script>
+</body>
+</html>
+
+```
+
+### Comment utiliser ce fichier ?
+
+1.  **Créez un nouveau dépôt sur GitHub.**
+2.  **Créez un fichier nommé `index.html`** dans ce dépôt.
+3.  **Copiez et collez tout le code ci-dessus** dans ce fichier `index.html`.
+4.  **IMPORTANT :** Modifiez les lignes 162 et 163 pour y mettre votre **NOUVEAU** `client_id` et votre **NOUVELLE** `clé API`.
+5.  **Activez GitHub Pages** dans les paramètres de votre dépôt (section "Pages", source "main" branch, folder "/ (root)").
+6.  Visitez l'URL de votre site GitHub Pages. Vous verrez le bouton de connexion !
+
+### Prochaines étapes pour vous
+
+Ce code gère la première étape : la connexion. Pour aller plus loin et afficher les vraies données, vous devrez :
+1.  **Apprendre à utiliser `fetch` en JavaScript** pour faire des requêtes HTTP.
+2.  **Lire la documentation de l'API Bungie** (le lien que vous avez partagé) pour connaître les URLs exactes à appeler (les "endpoints").
+3.  **Implémenter les appels** : Après la connexion, utilisez l'API pour chercher le profil du joueur, puis ses personnages, et ensuite afficher leurs informations dans les cartes prévues à cet effet.
+
+C'est un projet d'apprentissage fantastique. Bonne chance, Gardien !
+
+<!--
+[PROMPT_SUGGESTION]Montre-moi comment utiliser `fetch` pour récupérer les informations de mon profil Bungie après la connexion.[/PROMPT_SUGGESTION]
+[PROMPT_SUGGESTION]Comment puis-je structurer mon code JavaScript dans des fichiers séparés pour un projet plus grand ?[/PROMPT_SUGGESTION]
