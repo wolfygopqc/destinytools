@@ -165,7 +165,7 @@
         }
         .equipment-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-top: 20px;
             padding-top: 20px;
@@ -470,16 +470,27 @@
                     let equipmentHtml = '<div class="equipment-grid">';
                     const equippedItems = equipmentData[characterId].items;
 
-                    // We only show a few key slots for simplicity
-                    const relevantSlots = [1498876634, 2465295065, 953998645]; // Kinetic, Energy, Power
+                    // Hashes for Kinetic, Energy, Power, Helmet, Arms, Chest, Legs
+                    const relevantSlots = [
+                        1498876634, 2465295065, 953998645, // Weapons
+                        3448274439, 3551918588, 14239492, 20886954_
+                    ];
 
-                    for (const item of equippedItems) {
+                    // Sort items by slot order to keep a consistent layout
+                    const sortedItems = equippedItems.sort((a, b) => {
+                        return relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash);
+                    });
+
+                    for (const item of sortedItems) {
                         if (relevantSlots.includes(item.bucketHash)) {
                             const instance = itemInstanceData[item.itemInstanceId];
                             const power = instance ? instance.primaryStat.value : '';
+                            // Use a fallback for the title to avoid "undefined"
+                            const itemTitle = item.tooltipNotification || ''; 
+
                             equipmentHtml += `
                                 <div class="item-slot">
-                                    <img src="https://www.bungie.net${item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : item.icon}" class="item-icon" title="${item.tooltipNotification}">
+                                    <img src="https://www.bungie.net${item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '')}" class="item-icon" title="${itemTitle}">
                                     <span class="item-power">⟡ ${power}</span>
                                 </div>`;
                         }
@@ -493,7 +504,11 @@
                         <p><strong>Temps de jeu :</strong> ${Math.round(parseInt(char.minutesPlayedTotal) / 60)} heures</p>
                         ${equipmentHtml}`;
                     
-                    card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(https://www.bungie.net${char.emblemBackgroundPath})`;
+                    // Use a fallback background if emblem path is missing
+                    const backgroundUrl = char.emblemBackgroundPath 
+                        ? `https://www.bungie.net${char.emblemBackgroundPath}` 
+                        : 'https://www.bungie.net/common/destiny2_content/icons/27a51851464f9e07347a77c83958b9d4.jpg';
+                    card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(${backgroundUrl})`;
                     card.style.backgroundSize = 'cover';
                     card.style.backgroundPosition = 'center';
 
