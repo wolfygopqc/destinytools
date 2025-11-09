@@ -133,10 +133,25 @@
             backdrop-filter: blur(5px);
             border: 1px solid var(--border-color);
             padding: 20px;
-            text-align: left;
             clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
             transition: background 0.3s;
+            display: flex;
+            gap: 20px;
         }
+        .character-info {
+            flex-grow: 1;
+            text-align: left;
+        }
+        .character-render {
+            flex-shrink: 0;
+            width: 150px;
+            height: 320px; /* Adjust height as needed */
+            background-size: cover;
+            background-position: center;
+            border-left: 1px solid var(--border-color);
+            padding-left: 20px;
+        }
+
         .character-card h3 {
             margin-top: 0;
             color: var(--accent-color);
@@ -175,8 +190,6 @@
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
         }
         .item-slot {
             position: relative;
@@ -493,20 +506,21 @@
 
                     let statsHtml = '<div class="stats-grid">';
                     const stats = char.stats;
-                    const statOrder = {
-                        '2996146975': 'MOB',
-                        '392767087': 'RÉS',
-                        '1943323491': 'RÉC',
-                        '1735777505': 'DIS',
-                        '144602215': 'INT',
-                        '4244567218': 'FOR'
+                    const statDefinitions = {
+                        '2996146975': { short: 'MOB', long: 'Mobilité' },
+                        '392767087': { short: 'RÉS', long: 'Résilience' },
+                        '1943323491': { short: 'RÉC', long: 'Récupération' },
+                        '1735777505': { short: 'DIS', long: 'Discipline' },
+                        '144602215': { short: 'INT', long: 'Intelligence' },
+                        '4244567218': { short: 'FOR', long: 'Force' }
                     };
 
-                    for (const hash in statOrder) {
+                    for (const hash in statDefinitions) {
+                        const statInfo = statDefinitions[hash];
                         statsHtml += `
-                            <div class="stat-item">
+                            <div class="stat-item" title="${statInfo.long}">
                                 <span class="stat-value">${stats[hash] || 0}</span>
-                                <span class="stat-label">${statOrder[hash]}</span>
+                                <span class="stat-label">${statInfo.short}</span>
                             </div>`;
                     }
                     statsHtml += '</div>';
@@ -535,8 +549,7 @@
 
                             equipmentHtml += `
                                 <div class="item-slot">
-                                    <img src="https://www.bungie.net${item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '')}" class="item-icon" title="${itemTitle}">
-                                    <span class="item-power">⟡ ${power}</span>
+                                    <img src="https://www.bungie.net${item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '')}" class="item-icon" title="${itemTitle || 'Équipement'}">
                                     <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                                 </div>`;
                         }
@@ -544,12 +557,15 @@
                     equipmentHtml += '</div>';
 
                     card.innerHTML = `
-                        <h3>${classMap[char.classType] || 'Inconnue'}</h3>
-                        <p><strong>Lumière :</strong> ${char.light}</p>
-                        <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
-                        <p><strong>Temps de jeu :</strong> ${Math.round(parseInt(char.minutesPlayedTotal) / 60)} heures</p>
-                        ${statsHtml}
-                        ${equipmentHtml}`;
+                        <div class="character-info">
+                            <h3>${classMap[char.classType] || 'Inconnue'}</h3>
+                            <p><strong>Lumière :</strong> ${char.light}</p>
+                            <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
+                            ${statsHtml}
+                            ${equipmentHtml}
+                        </div>
+                        <div class="character-render" style="background-image: url(https://www.bungie.net${char.emblemPath.replace('emblems', 'character_backdrops')})"></div>
+                    `;
                     
                     // Use a fallback background if emblem path is missing
                     const backgroundUrl = char.emblemBackgroundPath 
