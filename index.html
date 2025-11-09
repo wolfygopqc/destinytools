@@ -534,7 +534,7 @@
                             const power = instance ? instance.primaryStat.value : '';
                             // Use a fallback for the title to avoid "undefined"
                             const itemTitle = item.tooltipNotification || ''; 
-                            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/img/misc/missing_icon_d2.png'); // Fallback icon
+                            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/img/misc/missing_icon_d2.png');
 
                             equipmentHtml += `
                                 <div class="item-slot">
@@ -572,12 +572,6 @@
             profileDataDiv.classList.add('hidden'); // Hide the data section
             console.error("Une erreur est survenue dans le processus:", error);
             errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
-            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
-        }
-    </script>
-</body>
- 
-</html>
             contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
     </script>
