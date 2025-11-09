@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +8,21 @@
     <style>
         :root {
             --bg-color: #121212;
-            --primary-color: #2a2a2a;
-            --secondary-color: #1f1f1f;
-            --text-color: #e0e0e0;
-            --accent-color: #4fc3f7;
-            --border-color: #3a3a3a;
-            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --primary-color: rgba(15, 20, 25, 0.85);
+            --secondary-color: rgba(30, 40, 50, 0.7);
+            --text-color: #f0f0f0;
+            --accent-color: #5294e2;
+            --border-color: rgba(130, 170, 220, 0.4);
+            --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            --hover-color: #fff;
         }
+
         body {
-            background-color: var(--bg-color);
+            background-image: url('https://www.bungie.net/img/destiny_content/pgcr/background_decal.png');
+            background-color: #0c1014;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
             color: var(--text-color);
             font-family: var(--font-family);
             margin: 0;
@@ -23,6 +30,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
         }
         header {
             width: 100%;
@@ -33,18 +41,22 @@
             padding-bottom: 20px;
         }
         h1 {
-            color: var(--accent-color);
+            color: var(--text-color);
             margin: 0;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
         main {
             width: 100%;
             max-width: 1200px;
         }
         .login-container, .content-container {
-            background-color: var(--primary-color);
+            background: var(--primary-color);
+            backdrop-filter: blur(10px);
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
             text-align: center;
         }
         .hidden {
@@ -52,7 +64,7 @@
         }
         #loginBtn {
             background-color: var(--accent-color);
-            color: var(--bg-color);
+            color: var(--text-color);
             border: none;
             padding: 15px 30px;
             font-size: 1.2em;
@@ -60,10 +72,12 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
         }
         #loginBtn:hover {
-            background-color: #81d4fa;
+            background-color: #75b0f8;
             transform: scale(1.05);
+            color: #fff;
         }
         #userInfo {
             margin-bottom: 30px;
@@ -76,19 +90,52 @@
             gap: 20px;
         }
         .character-card {
-            background-color: var(--secondary-color);
+            background: var(--secondary-color);
+            backdrop-filter: blur(5px);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
             padding: 20px;
             text-align: left;
+            clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+            transition: background 0.3s;
         }
         .character-card h3 {
             margin-top: 0;
             color: var(--accent-color);
+            font-weight: 400;
         }
         .character-card p {
             margin: 5px 0;
+            font-size: 0.9em;
         }
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        .item-slot {
+            position: relative;
+        }
+        .item-icon {
+            width: 100%;
+            background-color: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            transition: border-color 0.2s;
+        }
+        .item-icon:hover {
+            border-color: var(--hover-color);
+        }
+        .item-power {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
+
         .loader {
             border: 4px solid var(--border-color);
             border-top: 4px solid var(--accent-color);
@@ -104,6 +151,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -134,7 +182,7 @@
 
     <script>
         const BUNGIE_CLIENT_ID = "51005";
-        const BUNGIE_API_KEY = "4daa3e6ece214a81bbb696357c373b77"; 
+        const BUNGIE_API_KEY = "VOTRE_NOUVELLE_CLE_API_SECRETE"; 
 
         const loginContainer = document.getElementById('loginContainer');
         const contentContainer = document.getElementById('contentContainer');
@@ -195,10 +243,15 @@
 
                 const destinyProfile = allDestinyProfiles.find(p => p.membershipId === primaryMembershipId) || allDestinyProfiles[0];
 
-                const destinyMembershipId = destinyProfile.membershipId;
+                // This check is crucial for users who have never played Destiny.
+                if (!destinyProfile) {
+                    throw new Error("Ce compte Bungie.net n'a pas de profil Destiny 2 associé. Veuillez lancer le jeu au moins une fois.");
+                }
+
+                const destinyMembershipId = destinyProfile.membershipId; // This line was causing the error
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters`, {
+                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,ItemInstances`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -226,6 +279,8 @@
 
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
+            const equipmentData = data.characterEquipment.data;
+            const itemInstanceData = data.itemComponents.instances.data;
 
             for (const characterId of characterIds) {
                 const char = characterData[characterId];
@@ -235,12 +290,32 @@
 
                     const card = document.createElement('div');
                     card.className = 'character-card';
+
+                    let equipmentHtml = '<div class="equipment-grid">';
+                    const equippedItems = equipmentData[characterId].items;
+
+                    // We only show a few key slots for simplicity
+                    const relevantSlots = [1498876634, 2465295065, 953998645]; // Kinetic, Energy, Power
+
+                    for (const item of equippedItems) {
+                        if (relevantSlots.includes(item.bucketHash)) {
+                            const instance = itemInstanceData[item.itemInstanceId];
+                            const power = instance ? instance.primaryStat.value : '';
+                            equipmentHtml += `
+                                <div class="item-slot">
+                                    <img src="https://www.bungie.net${item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : item.icon}" class="item-icon" title="${item.tooltipNotification}">
+                                    <span class="item-power">⟡ ${power}</span>
+                                </div>`;
+                        }
+                    }
+                    equipmentHtml += '</div>';
+
                     card.innerHTML = `
                         <h3>${classMap[char.classType] || 'Inconnue'}</h3>
                         <p><strong>Lumière :</strong> ${char.light}</p>
                         <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                         <p><strong>Temps de jeu :</strong> ${Math.round(parseInt(char.minutesPlayedTotal) / 60)} heures</p>
-                    `;
+                        ${equipmentHtml}`;
                     
                     card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(https://www.bungie.net${char.emblemBackgroundPath})`;
                     card.style.backgroundSize = 'cover';
@@ -252,4 +327,5 @@
         }
     </script>
 </body>
+
 </html>
