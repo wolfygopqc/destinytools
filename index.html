@@ -667,7 +667,6 @@
             const vaultInventory = data.profileInventory?.data?.items || [];
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
-            // Display Vault directly on the page
             if (vaultInventory.length > 0) {
                 vaultGrid.innerHTML = '';
                 vaultInventory.forEach(item => {
@@ -689,8 +688,6 @@
                 vaultDisplayContainer.classList.add('hidden');
             }
 
-
-            // Display Character Cards
             for (const characterId of characterIds) {
                 const char = characterData[characterId];
                 if (char) {
@@ -775,67 +772,57 @@
             const weaponBuckets = [1498876634, 2465295065, 953998645];
             const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
 
-            const weapons = inventory.filter(item => weaponBuckets.includes(item.bucketHash));
-            const armor = inventory.filter(item => armorBuckets.includes(item.bucketHash));
+            const createSection = (title, items, isEquippedView = false) => {
+                if (items.length === 0) return;
 
-            let modalHtml = '';
+                const section = document.createElement('div');
+                section.className = isEquippedView ? 'equipped-items' : 'inventory-section';
 
-            if (weapons.length > 0) {
-                modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
-                weapons.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId] || data.profileInventory?.data?.itemComponents?.instances?.data?.[item.itemInstanceId];
-                    const power = instance ? instance.primaryStat.value : '';
+                const sectionTitle = document.createElement('h3');
+                sectionTitle.textContent = title;
+                if (!isEquippedView) section.appendChild(sectionTitle);
+
+                const grid = document.createElement('div');
+                grid.className = isEquippedView ? 'equipped-items' : 'inventory-grid';
+
+                items.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance?.primaryStat?.value || '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    
                     const itemElement = document.createElement('div');
                     itemElement.className = 'item-slot';
                     itemElement.innerHTML = `
                         <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
-                    itemElement.addEventListener('click', () => showItemDetailModal(item, data));
                     itemElement.addEventListener('click', () => showItemDetailModal(item, data, characterId));
-                    inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
+                    grid.appendChild(itemElement);
                 });
-                modalHtml += '</div></div>';
-            }
 
-            if (armor.length > 0) {
-                modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
-                armor.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId] || data.profileInventory?.data?.itemComponents?.instances?.data?.[item.itemInstanceId];
-                    const power = instance ? instance.primaryStat.value : '';
-                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'item-slot';
-                    itemElement.innerHTML = `
-                        <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
-                        <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
-                    `;
-                    itemElement.addEventListener('click', () => showItemDetailModal(item, data));
-                    inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
-                });
-                modalHtml += '</div></div>';
-            }
+                if (isEquippedView) {
+                    inventoryContentDiv.appendChild(grid);
+                } else {
+                    section.appendChild(grid);
+                    inventoryContentDiv.appendChild(section);
+                }
+            };
 
-            if (weapons.length > 0 || armor.length > 0) {
-                inventoryContentDiv.innerHTML = modalHtml;
-                // Re-add event listeners after innerHTML is set
-                const itemSlots = inventoryContentDiv.querySelectorAll('.item-slot');
-                const allItems = [...weapons, ...armor];
-                itemSlots.forEach((slot, index) => {
-                    // This is a simplified mapping, might need improvement for more complex inventories
-                    const item = allItems[index];
-                    if (item) {
-                        slot.addEventListener('click', () => showItemDetailModal(item));
-                        slot.addEventListener('click', () => showItemDetailModal(item, data, characterId));
-                    }
-                });
-            }
+            const equippedItems = inventory.filter(item => item.isEquipped);
+            createSection('Équipé', equippedItems, true);
+
+            const inventoryItems = inventory.filter(item => !item.isEquipped);
+            const inventoryWeapons = inventoryItems.filter(item => weaponBuckets.includes(item.bucketHash));
+            const inventoryArmor = inventoryItems.filter(item => armorBuckets.includes(item.bucketHash));
+
+            createSection('Armes en inventaire', inventoryWeapons);
+            createSection('Armures en inventaire', inventoryArmor);
 
             inventoryModal.classList.add('visible');
         }
 
         async function showItemDetailModal(item, data, characterId) {
+            currentOpenItem = { item, characterId, allData: data };
             try {
                 const itemDef = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
                 if (!itemDef) throw new Error("Définition de l'objet introuvable.");
@@ -849,14 +836,27 @@
                 `;
                 
                 let actionsHtml = '<div id="itemActions">';
+                const allCharacterIds = currentOpenItem.allData.profile.data.characterIds;
+
                 if (characterId !== 'vault') {
-                    actionsHtml += `<button class="action-button" id="transferBtn">Transférer au coffre</button>`;
+                    actionsHtml += `<button class="action-button" onclick="transferItem('${item.itemInstanceId}', '${characterId}', 'vault')">Transférer au coffre</button>`;
+                    allCharacterIds.filter(id => id !== characterId).forEach(targetId => {
+                        const targetChar = currentOpenItem.allData.characters.data[targetId];
+                        const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                        actionsHtml += `<button class="action-button" onclick="transferItem('${item.itemInstanceId}', '${characterId}', '${targetId}')">Transférer à ${classMap[targetChar.classType]}</button>`;
+                    });
+                } else {
+                     allCharacterIds.forEach(targetId => {
+                        const targetChar = currentOpenItem.allData.characters.data[targetId];
+                        const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                        actionsHtml += `<button class="action-button" onclick="transferItem('${item.itemInstanceId}', 'vault', '${targetId}')">Transférer à ${classMap[targetChar.classType]}</button>`;
+                    });
                 }
                 actionsHtml += '</div>';
                 bodyHtml += actionsHtml;
 
-                const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || 
-                                  data.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
+                const itemSockets = currentOpenItem.allData.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || 
+                                  currentOpenItem.allData.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
 
                 if (itemSockets) {
                     bodyHtml += '<div class="perks-section"><h4>Attributs</h4>';
@@ -928,7 +928,7 @@
                         stackSize: item.quantity,
                         transferToVault: targetCharacterId === 'vault',
                         itemId: itemId,
-                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId, // API needs a valid characterId even for vault->char
+                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId,
                         membershipType: destinyProfile.membershipType
                     })
                 });
@@ -942,56 +942,6 @@
                 refreshBtn.click();
             } catch (error) {
                 alert(`Erreur lors du transfert : ${error.message}`);
-                buttons.forEach(btn => btn.disabled = false);
-            }
-        }
-
-        function handleApiError(error) {
-            console.error("Une erreur API est survenue:", error);
-            loadingDiv.classList.add('hidden');
-            profileDataDiv.classList.add('hidden');
-            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
-            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
-        }
-    </script>
-</body>
- 
-</html>
-            transferBtn.textContent = 'Transfert en cours...';
-            const buttons = document.querySelectorAll('#itemActions .action-button');
-            buttons.forEach(btn => btn.disabled = true);
-
-            try {
-                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
-                    method: 'POST',
-                    headers: {
-                        'X-API-Key': BUNGIE_API_KEY,
-                        'Authorization': `Bearer ${session.accessToken}`
-                    },
-                    body: JSON.stringify({
-                        itemReferenceHash: item.itemHash,
-                        stackSize: item.quantity,
-                        transferToVault: true,
-                        itemId: item.itemInstanceId,
-                        characterId: characterId,
-                        transferToVault: targetCharacterId === 'vault',
-                        itemId: itemId,
-                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId, // API needs a valid characterId even for vault->char
-                        membershipType: destinyProfile.membershipType
-                    })
-                });
-                const responseData = await response.json();
-                if (responseData.ErrorCode !== 1) {
-                    throw new Error(responseData.Message);
-                }
-                alert('Objet transféré avec succès !');
-                itemDetailModal.classList.remove('visible');
-                inventoryModal.classList.remove('visible');
-                refreshBtn.click();
-            } catch (error) {
-                alert(`Erreur lors du transfert : ${error.message}`);
-                transferBtn.disabled = false;
-                transferBtn.textContent = 'Transférer au coffre';
                 buttons.forEach(btn => btn.disabled = false);
             }
         }
