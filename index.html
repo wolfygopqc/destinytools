@@ -546,10 +546,11 @@
                             const power = instance ? instance.primaryStat.value : '';
                             // Use a fallback for the title to avoid "undefined"
                             const itemTitle = item.tooltipNotification || ''; 
+                            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/img/misc/missing_icon_d2.png');
 
                             equipmentHtml += `
                                 <div class="item-slot">
-                                    <img src="https://www.bungie.net${item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '')}" class="item-icon" title="${itemTitle || 'Équipement'}">
+                                    <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${itemTitle || 'Équipement'}">
                                     <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                                 </div>`;
                         }
@@ -564,7 +565,7 @@
                             ${statsHtml}
                             ${equipmentHtml}
                         </div>
-                        <div class="character-render" style="background-image: url(https://www.bungie.net${char.emblemPath.replace('emblems', 'character_backdrops')})"></div>
+                        <div class="character-render" style="background-image: url(https://www.bungie.net${char.emblemBackgroundPath})"></div>
                     `;
                     
                     // Use a fallback background if emblem path is missing
