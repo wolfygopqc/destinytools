@@ -118,23 +118,6 @@
         .hidden {
             display: none;
         }
-        #loginBtn {
-            background-color: var(--accent-color);
-            color: var(--text-color);
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2em;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-        }
-        #loginBtn:hover {
-            background-color: #75b0f8;
-            transform: scale(1.05);
-            color: #fff;
-        }
         #userInfo {
             margin-bottom: 30px;
             padding-bottom: 20px;
@@ -213,6 +196,23 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        /* This is the correct style for the main login button */
+        .login-container #loginBtn {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+        }
+        .login-container #loginBtn:hover {
+            background-color: #75b0f8;
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -473,7 +473,8 @@
                     // Hashes for Kinetic, Energy, Power, Helmet, Arms, Chest, Legs
                     const relevantSlots = [
                         1498876634, 2465295065, 953998645, // Weapons
-                        3448274439, 3551918588, 14239492, 20886954_
+                        3448274439, 3551918588, 14239492, 20886954, // Armor
+                        4350422948 // Class Item
                     ];
 
                     // Sort items by slot order to keep a consistent layout
