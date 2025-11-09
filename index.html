@@ -198,6 +198,7 @@
             background-color: rgba(0,0,0,0.4);
             border: 1px solid var(--border-color);
             transition: border-color 0.2s;
+            cursor: pointer;
         }
 
         .modal-overlay {
@@ -672,7 +673,7 @@
         }
 
         function showInventoryModal(characterId, data) {
-            const itemInstances = data.itemComponents?.instances?.data || data.profileInventory?.data?.itemComponents?.instances?.data || {};
+            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             let inventory;
             let title;
 
@@ -699,14 +700,17 @@
             if (weapons.length > 0) {
                 modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
                 weapons.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId];
+                    const instance = itemInstances[item.itemInstanceId] || {};
                     const power = instance ? instance.primaryStat.value : '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
-                    modalHtml += `
-                        <div class="item-slot">
-                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
-                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
-                        </div>`;
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item-slot';
+                    itemElement.innerHTML = `
+                        <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                        <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                    `;
+                    itemElement.addEventListener('click', () => showItemDetailModal(item));
+                    inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
                 });
                 modalHtml += '</div></div>';
             }
@@ -714,26 +718,58 @@
             if (armor.length > 0) {
                 modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
                 armor.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId];
+                    const instance = itemInstances[item.itemInstanceId] || {};
                     const power = instance ? instance.primaryStat.value : '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
-                    modalHtml += `
-                        <div class="item-slot">
-                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
-                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
-                        </div>`;
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item-slot';
+                    itemElement.innerHTML = `
+                        <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                        <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                    `;
+                    itemElement.addEventListener('click', () => showItemDetailModal(item));
+                    inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
                 });
                 modalHtml += '</div></div>';
             }
 
-            inventoryContentDiv.innerHTML = modalHtml;
+            if (weapons.length > 0 || armor.length > 0) {
+                inventoryContentDiv.innerHTML = modalHtml;
+                // Re-add event listeners after innerHTML is set
+                const itemSlots = inventoryContentDiv.querySelectorAll('.item-slot');
+                const allItems = [...weapons, ...armor];
+                itemSlots.forEach((slot, index) => {
+                    // This is a simplified mapping, might need improvement for more complex inventories
+                    const item = allItems[index];
+                    if (item) {
+                        slot.addEventListener('click', () => showItemDetailModal(item));
+                    }
+                });
+            }
+
             inventoryModal.classList.add('visible');
         }
 
-        function showItemDetailModal(item, instanceData) {
-            itemDetailName.textContent = "Détails de l'objet";
-            itemDetailIcon.src = `https://www.bungie.net${item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png'}`;
-            itemDetailBody.innerHTML = `<p>Afficher les détails complets (nom, attributs, etc.) nécessite une intégration avec le Manifest de Destiny.</p><p class="flavor-text">C'est la prochaine grande étape !</p>`;
+        async function showItemDetailModal(item) {
+            const definitionResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/DestinyInventoryItemDefinition/${item.itemHash}/`, {
+                headers: { 'X-API-Key': BUNGIE_API_KEY }
+            });
+            if (!definitionResponse.ok) {
+                itemDetailName.textContent = "Erreur";
+                itemDetailBody.innerHTML = "<p>Impossible de récupérer les détails de l'objet.</p>";
+                itemDetailModal.classList.add('visible');
+                return;
+            }
+            const definitionData = await definitionResponse.json();
+            const def = definitionData.Response;
+
+            itemDetailName.textContent = def.displayProperties.name;
+            itemDetailIcon.src = `https://www.bungie.net${def.displayProperties.icon}`;
+            itemDetailBody.innerHTML = `
+                <p>${def.itemTypeAndTierDisplayName}</p>
+                <p>${def.displayProperties.description}</p>
+                <p class="flavor-text">${def.flavorText || ''}</p>
+            `;
             itemDetailModal.classList.add('visible');
         }
 
