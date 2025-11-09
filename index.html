@@ -135,21 +135,9 @@
             padding: 20px;
             clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
             transition: background 0.3s;
-            display: flex;
-            gap: 20px;
         }
         .character-info {
-            flex-grow: 1;
             text-align: left;
-        }
-        .character-render {
-            flex-shrink: 0;
-            width: 150px;
-            height: 320px; /* Adjust height as needed */
-            background-size: cover;
-            background-position: center;
-            border-left: 1px solid var(--border-color);
-            padding-left: 20px;
         }
 
         .character-card h3 {
@@ -546,7 +534,7 @@
                             const power = instance ? instance.primaryStat.value : '';
                             // Use a fallback for the title to avoid "undefined"
                             const itemTitle = item.tooltipNotification || ''; 
-                            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/img/misc/missing_icon_d2.png');
+                            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/img/misc/missing_icon_d2.png'); // Fallback icon
 
                             equipmentHtml += `
                                 <div class="item-slot">
@@ -558,14 +546,11 @@
                     equipmentHtml += '</div>';
 
                     card.innerHTML = `
-                        <div class="character-info">
-                            <h3>${classMap[char.classType] || 'Inconnue'}</h3>
-                            <p><strong>Lumière :</strong> ${char.light}</p>
-                            <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
-                            ${statsHtml}
-                            ${equipmentHtml}
-                        </div>
-                        <div class="character-render" style="background-image: url(https://www.bungie.net${char.emblemBackgroundPath})"></div>
+                        <h3>${classMap[char.classType] || 'Inconnue'}</h3>
+                        <p><strong>Lumière :</strong> ${char.light}</p>
+                        <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
+                        ${statsHtml}
+                        ${equipmentHtml}
                     `;
                     
                     // Use a fallback background if emblem path is missing
@@ -587,6 +572,12 @@
             profileDataDiv.classList.add('hidden'); // Hide the data section
             console.error("Une erreur est survenue dans le processus:", error);
             errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
             contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
     </script>
