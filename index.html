@@ -186,7 +186,15 @@
                 if (!userMembershipsResponse.ok) throw new Error("Impossible de récupérer les profils de l'utilisateur.");
 
                 const userMembershipsData = await userMembershipsResponse.json();
-                const destinyProfile = userMembershipsData.Response.destinyMemberships[0];
+                const allDestinyProfiles = userMembershipsData.Response.destinyMemberships;
+                const primaryMembershipId = userMembershipsData.Response.primaryMembershipId;
+
+                if (!allDestinyProfiles || allDestinyProfiles.length === 0) {
+                    throw new Error("Aucun compte Destiny n'a été trouvé pour cet utilisateur Bungie.net.");
+                }
+
+                const destinyProfile = allDestinyProfiles.find(p => p.membershipId === primaryMembershipId) || allDestinyProfiles[0];
+
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
