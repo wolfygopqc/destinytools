@@ -64,6 +64,20 @@
             background-color: var(--text-color);
             color: var(--bg-color);
         }
+        #refreshBtn {
+            background: none;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        #refreshBtn:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
 
         .login-container, .content-container {
             background: var(--primary-color);
@@ -301,6 +315,7 @@
     <header>
         <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
+        <button id="refreshBtn" class="hidden">Rafraîchir</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
     </header>
 
@@ -367,6 +382,7 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         const errorDisplayDiv = document.createElement('div');
+        const refreshBtn = document.getElementById('refreshBtn');
         let refreshIntervalId = null;
 
         loginBtn.addEventListener('click', () => {
@@ -404,6 +420,16 @@
             window.location.reload();
         });
 
+        refreshBtn.addEventListener('click', () => {
+            console.log("Rafraîchissement manuel demandé.");
+            const session = getSessionFromCache();
+            if (session) {
+                loadingDiv.classList.remove('hidden');
+                profileDataDiv.classList.add('hidden');
+                getProfileDataWithToken(session.accessToken, session.membershipId);
+            }
+        });
+
         modalCloseBtn.addEventListener('click', () => {
             inventoryModal.classList.remove('visible');
         });
@@ -418,6 +444,7 @@
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
+            refreshBtn.classList.remove('hidden');
         }
 
         async function getTokensWithAuthCode(authCode) {
