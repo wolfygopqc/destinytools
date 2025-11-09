@@ -261,6 +261,9 @@
             font-style: italic;
             color: rgba(240, 240, 240, 0.7);
         }
+        .item-detail-body p {
+            margin: 5px 0 15px 0;
+        }
         #itemActions {
             margin-top: 20px;
         }
@@ -271,6 +274,11 @@
             padding: 10px 20px;
             cursor: pointer;
             width: 100%;
+            margin-bottom: 10px;
+        }
+        .action-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
         }
         .perks-section {
             margin-top: 20px;
@@ -289,6 +297,36 @@
         }
         .inventory-section {
             margin-bottom: 20px;
+        }
+        .equipped-items {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr) 0.5fr repeat(5, 1fr);
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .equipped-items .item-slot {
+            width: 80px;
+            height: 80px;
+        }
+        .equipped-items .item-power {
+            font-size: 1em;
+        }
+        .inventory-grid .item-slot {
+            width: 64px;
+            height: 64px;
+        }
+        .inventory-grid .item-power {
+            font-size: 0.8em;
+        }
+        .item-power {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
         }
         .inventory-grid {
             display: grid;
@@ -701,7 +739,6 @@
         }
 
         function showInventoryModal(characterId, data) {
-            const itemInstances = data.itemComponents?.instances?.data || {};
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             let inventory;
             let title;
@@ -799,7 +836,6 @@
                 actionsHtml += '</div>';
                 bodyHtml += actionsHtml;
 
-                const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || data.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
                 const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || 
                                   data.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
 
@@ -812,7 +848,6 @@
                     const perkDefs = await Promise.all(perkHashes.map(hash => getDefinition('DestinyInventoryItemDefinition', hash)));
 
                     for (const perkDef of perkDefs) {
-                        if (perkDef && perkDef.displayProperties.name && perkDef.itemTypeDisplayName === "Attribut d'arme") {
                         if (perkDef && perkDef.displayProperties.name && (perkDef.itemTypeDisplayName === "Attribut d'arme" || perkDef.itemTypeDisplayName === "Attribut d'armure")) {
                              bodyHtml += `
                                 <div class="perk-item">
