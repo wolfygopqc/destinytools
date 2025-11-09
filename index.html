@@ -421,7 +421,6 @@
         });
 
         refreshBtn.addEventListener('click', () => {
-            console.log("Rafraîchissement manuel demandé.");
             const session = getSessionFromCache();
             if (session) {
                 loadingDiv.classList.remove('hidden');
@@ -654,6 +653,22 @@
                     charactersDiv.appendChild(card);
                 }
             }
+
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+            }
+            refreshIntervalId = setInterval(() => {
+                const session = getSessionFromCache();
+                if (session) {
+                    if (Date.now() > session.accessTokenExpiresAt) {
+                        refreshToken(session.refreshToken);
+                    } else {
+                        getProfileDataWithToken(session.accessToken, session.membershipId);
+                    }
+                } else {
+                    clearInterval(refreshIntervalId);
+                }
+            }, 120000);
         }
 
         function showInventoryModal(characterId, data) {
@@ -732,4 +747,4 @@
     </script>
 </body>
  
-</html> 
+</html>
