@@ -135,6 +135,7 @@
             padding: 20px;
             clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
             transition: background 0.3s;
+            cursor: pointer;
         }
         .character-info {
             text-align: left;
@@ -172,6 +173,55 @@
         .stat-value {
             font-size: 1.1em;
             font-weight: bold;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: var(--primary-color);
+            padding: 30px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 2em;
+            cursor: pointer;
+            color: var(--text-color);
+            line-height: 1;
+        }
+        .inventory-section {
+            margin-bottom: 20px;
+        }
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+            gap: 8px;
         }
 
         .loader {
@@ -243,6 +293,17 @@
                 <div id="characters"></div>
             </div>
         </div>
+
+        <!-- Inventory Modal -->
+        <div id="inventoryModal" class="modal-overlay">
+            <div class="modal-content">
+                <span id="modalCloseBtn" class="modal-close">&times;</span>
+                <h2 id="inventoryCharacterName">Inventaire</h2>
+                <div id="inventoryContent">
+                    <!-- Inventory items will be injected here -->
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -256,8 +317,12 @@
         const profileDataDiv = document.getElementById('profileData');
         const userInfoDiv = document.getElementById('userInfo');
         const charactersDiv = document.getElementById('characters');
-        const errorDisplayDiv = document.createElement('div'); // For displaying errors
         const logoutBtn = document.getElementById('logoutBtn');
+        const inventoryModal = document.getElementById('inventoryModal');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const inventoryContentDiv = document.getElementById('inventoryContent');
+        const inventoryCharacterName = document.getElementById('inventoryCharacterName');
+        const errorDisplayDiv = document.createElement('div');
 
         loginBtn.addEventListener('click', () => {
             const authUrl = `https://www.bungie.net/fr/OAuth/Authorize?client_id=${BUNGIE_CLIENT_ID}&response_type=code`;
@@ -293,6 +358,10 @@
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('destinySession');
             window.location.reload();
+        });
+
+        modalCloseBtn.addEventListener('click', () => {
+            inventoryModal.classList.remove('visible');
         });
 
         function showContent() {
@@ -411,7 +480,7 @@
                 const destinyMembershipId = destinyProfile.membershipId; // This line was causing the error
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,ItemInstances`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterInventories,ItemInstances`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -454,8 +523,7 @@
 
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
-            const equipmentData = data.characterEquipment.data;
-            const itemInstanceData = data.itemComponents.instances.data;
+            const inventoriesData = data.characterInventories.data;
 
             for (const characterId of characterIds) {
                 const char = characterData[characterId];
@@ -493,6 +561,10 @@
                         ${statsHtml}
                     `;
                     
+                    card.addEventListener('click', () => {
+                        showInventoryModal(characterId, data);
+                    });
+
                     // Use a fallback background if emblem path is missing
                     const backgroundUrl = char.emblemBackgroundPath 
                         ? `https://www.bungie.net${char.emblemBackgroundPath}` 
@@ -504,6 +576,186 @@
                     charactersDiv.appendChild(card);
                 }
             }
+        }
+
+        function showInventoryModal(characterId, data) {
+            const character = data.characters.data[characterId];
+            const inventory = data.characterInventories.data[characterId].items;
+            const itemInstances = data.itemComponents.instances.data;
+
+            const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+            inventoryCharacterName.textContent = `Inventaire - ${classMap[character.classType]}`;
+
+            inventoryContentDiv.innerHTML = ''; // Clear previous content
+
+            const weaponBuckets = [1498876634, 2465295065, 953998645];
+            const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+
+            const weapons = inventory.filter(item => weaponBuckets.includes(item.bucketHash));
+            const armor = inventory.filter(item => armorBuckets.includes(item.bucketHash));
+
+            let modalHtml = '';
+
+            if (weapons.length > 0) {
+                modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
+                weapons.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance ? instance.primaryStat.value : '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    modalHtml += `
+                        <div class="item-slot">
+                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                        </div>`;
+                });
+                modalHtml += '</div></div>';
+            }
+
+            if (armor.length > 0) {
+                modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
+                armor.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance ? instance.primaryStat.value : '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    modalHtml += `
+                        <div class="item-slot">
+                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                        </div>`;
+                });
+                modalHtml += '</div></div>';
+            }
+
+            inventoryContentDiv.innerHTML = modalHtml;
+            inventoryModal.classList.add('visible');
+        }
+
+        function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden'); // Hide the loader
+            profileDataDiv.classList.add('hidden'); // Hide the data section
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
+
+            const profileInfo = data.profile.data.userInfo;
+            userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
+
+            charactersDiv.innerHTML = '';
+
+            const characterData = data.characters.data;
+            const characterIds = data.profile.data.characterIds;
+            const equipmentData = data.characterEquipment.data;
+            const itemInstanceData = data.itemComponents.instances.data;
+            const inventoriesData = data.characterInventories.data;
+
+            for (const characterId of characterIds) {
+                const char = characterData[characterId];
+                if (char) {
+                    const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                    const raceMap = { 0: "Humain", 1: "Éveillé", 2: "Exo" };
+
+                    const card = document.createElement('div');
+                    card.className = 'character-card';
+
+                    let statsHtml = '<div class="stats-grid">';
+                    const stats = char.stats;
+                    const statOrder = {
+                        '2996146975': 'Mobilité',
+                        '392767087': 'Résilience',
+                        '1943323491': 'Récupération',
+                        '1735777505': 'Discipline',
+                        '144602215': 'Intelligence',
+                        '4244567218': 'Force'
+                    };
+
+                    for (const hash in statOrder) {
+                        statsHtml += `
+                            <div class="stat-item">
+                                <span class="stat-value">${stats[hash] || 0}</span>
+                                <span class="stat-label">${statOrder[hash]}</span>
+                            </div>`;
+                    }
+                    statsHtml += '</div>';
+
+                    card.innerHTML = `
+                        <h3>${classMap[char.classType] || 'Inconnue'}</h3>
+                        <p><strong>Lumière :</strong> ${char.light}</p>
+                        <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
+                        ${statsHtml}
+                    `;
+                    
+                    card.addEventListener('click', () => {
+                        showInventoryModal(characterId, data);
+                    });
+
+                    // Use a fallback background if emblem path is missing
+                    const backgroundUrl = char.emblemBackgroundPath 
+                        ? `https://www.bungie.net${char.emblemBackgroundPath}` 
+                        : 'https://www.bungie.net/common/destiny2_content/icons/27a51851464f9e07347a77c83958b9d4.jpg';
+                    card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(${backgroundUrl})`;
+                    card.style.backgroundSize = 'cover';
+                    card.style.backgroundPosition = 'center';
+
+                    charactersDiv.appendChild(card);
+                }
+            }
+        }
+
+        function showInventoryModal(characterId, data) {
+            const character = data.characters.data[characterId];
+            const inventory = data.characterInventories.data[characterId].items;
+            const itemInstances = data.itemComponents.instances.data;
+
+            const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+            inventoryCharacterName.textContent = `Inventaire - ${classMap[character.classType]}`;
+
+            inventoryContentDiv.innerHTML = ''; // Clear previous content
+
+            const weaponBuckets = [1498876634, 2465295065, 953998645];
+            const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+
+            const weapons = inventory.filter(item => weaponBuckets.includes(item.bucketHash));
+            const armor = inventory.filter(item => armorBuckets.includes(item.bucketHash));
+
+            let modalHtml = '';
+
+            if (weapons.length > 0) {
+                modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
+                weapons.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance ? instance.primaryStat.value : '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    modalHtml += `
+                        <div class="item-slot">
+                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                        </div>`;
+                });
+                modalHtml += '</div></div>';
+            }
+
+            if (armor.length > 0) {
+                modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
+                armor.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance ? instance.primaryStat.value : '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    modalHtml += `
+                        <div class="item-slot">
+                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                        </div>`;
+                });
+                modalHtml += '</div></div>';
+            }
+
+            inventoryContentDiv.innerHTML = modalHtml;
+            inventoryModal.classList.add('visible');
         }
 
         function handleApiError(error) {
