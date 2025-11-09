@@ -151,8 +151,8 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 5px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
             text-align: center;
             margin-top: 15px;
             padding-bottom: 15px;
@@ -166,38 +166,12 @@
         }
         .stat-label {
             font-size: 0.7em;
-            text-transform: uppercase;
+            text-transform: none;
             color: rgba(240, 240, 240, 0.6);
         }
         .stat-value {
             font-size: 1.1em;
             font-weight: bold;
-        }
-        .equipment-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .item-slot {
-            position: relative;
-        }
-        .item-icon {
-            width: 100%;
-            background-color: rgba(0,0,0,0.4);
-            border: 1px solid var(--border-color);
-            transition: border-color 0.2s;
-        }
-        .item-icon:hover {
-            border-color: var(--hover-color);
-        }
-        .item-power {
-            position: absolute;
-            bottom: 2px;
-            right: 4px;
-            font-size: 0.8em;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px #000;
         }
 
         .loader {
@@ -494,63 +468,29 @@
 
                     let statsHtml = '<div class="stats-grid">';
                     const stats = char.stats;
-                    const statDefinitions = {
-                        '2996146975': { short: 'MOB', long: 'Mobilité' },
-                        '392767087': { short: 'RÉS', long: 'Résilience' },
-                        '1943323491': { short: 'RÉC', long: 'Récupération' },
-                        '1735777505': { short: 'DIS', long: 'Discipline' },
-                        '144602215': { short: 'INT', long: 'Intelligence' },
-                        '4244567218': { short: 'FOR', long: 'Force' }
+                    const statOrder = {
+                        '2996146975': 'Mobilité',
+                        '392767087': 'Résilience',
+                        '1943323491': 'Récupération',
+                        '1735777505': 'Discipline',
+                        '144602215': 'Intelligence',
+                        '4244567218': 'Force'
                     };
 
-                    for (const hash in statDefinitions) {
-                        const statInfo = statDefinitions[hash];
+                    for (const hash in statOrder) {
                         statsHtml += `
-                            <div class="stat-item" title="${statInfo.long}">
+                            <div class="stat-item">
                                 <span class="stat-value">${stats[hash] || 0}</span>
-                                <span class="stat-label">${statInfo.short}</span>
+                                <span class="stat-label">${statOrder[hash]}</span>
                             </div>`;
                     }
                     statsHtml += '</div>';
-
-                    let equipmentHtml = '<div class="equipment-grid">';
-                    const equippedItems = equipmentData[characterId].items;
-
-                    // Hashes for Kinetic, Energy, Power, Helmet, Arms, Chest, Legs
-                    const relevantSlots = [
-                        1498876634, 2465295065, 953998645, // Weapons
-                        3448274439, 3551918588, 14239492, 20886954, // Armor
-                        4350422948 // Class Item
-                    ];
-
-                    // Sort items by slot order to keep a consistent layout
-                    const sortedItems = equippedItems.sort((a, b) => {
-                        return relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash);
-                    });
-
-                    for (const item of sortedItems) {
-                        if (relevantSlots.includes(item.bucketHash)) {
-                            const instance = itemInstanceData[item.itemInstanceId];
-                            const power = instance ? instance.primaryStat.value : '';
-                            // Use a fallback for the title to avoid "undefined"
-                            const itemTitle = item.tooltipNotification || ''; 
-                            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
-
-                            equipmentHtml += `
-                                <div class="item-slot">
-                                    <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${itemTitle || 'Équipement'}">
-                                    <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
-                                </div>`;
-                        }
-                    }
-                    equipmentHtml += '</div>';
 
                     card.innerHTML = `
                         <h3>${classMap[char.classType] || 'Inconnue'}</h3>
                         <p><strong>Lumière :</strong> ${char.light}</p>
                         <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                         ${statsHtml}
-                        ${equipmentHtml}
                     `;
                     
                     // Use a fallback background if emblem path is missing
