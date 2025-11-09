@@ -570,7 +570,6 @@
             console.error("Une erreur API est survenue:", error);
             loadingDiv.classList.add('hidden'); // Hide the loader
             profileDataDiv.classList.add('hidden'); // Hide the data section
-            console.error("Une erreur est survenue dans le processus:", error);
             errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
             contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
