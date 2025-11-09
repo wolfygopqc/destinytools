@@ -657,7 +657,7 @@
         }
 
         function showInventoryModal(characterId, data) {
-            const itemInstances = data.itemComponents.instances.data;
+            const itemInstances = data.itemComponents?.instances?.data || {};
             let inventory;
             let title;
 
@@ -684,7 +684,7 @@
             if (weapons.length > 0) {
                 modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
                 weapons.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId];
+                    const instance = itemInstances[item.itemInstanceId] || {};
                     const power = instance ? instance.primaryStat.value : '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
                     modalHtml += `
@@ -699,7 +699,7 @@
             if (armor.length > 0) {
                 modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
                 armor.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId];
+                    const instance = itemInstances[item.itemInstanceId] || {};
                     const power = instance ? instance.primaryStat.value : '';
                     const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
                     modalHtml += `
