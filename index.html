@@ -776,6 +776,7 @@
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
                     itemElement.addEventListener('click', () => showItemDetailModal(item, data));
+                    itemElement.addEventListener('click', () => showItemDetailModal(item, data, characterId));
                     inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
                 });
                 modalHtml += '</div></div>';
@@ -809,6 +810,7 @@
                     const item = allItems[index];
                     if (item) {
                         slot.addEventListener('click', () => showItemDetailModal(item));
+                        slot.addEventListener('click', () => showItemDetailModal(item, data, characterId));
                     }
                 });
             }
@@ -817,6 +819,7 @@
         }
 
         async function showItemDetailModal(item, data) {
+        async function showItemDetailModal(item, data, characterId) {
             try {
                 const itemDef = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
                 if (!itemDef) throw new Error("Définition de l'objet introuvable.");
