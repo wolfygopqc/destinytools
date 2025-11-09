@@ -134,6 +134,7 @@
             border: 1px solid var(--border-color);
             padding: 20px;
             clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+            text-align: left;
             transition: background 0.3s;
             cursor: pointer;
         }
@@ -175,6 +176,16 @@
             font-weight: bold;
         }
 
+        .item-slot {
+            position: relative;
+        }
+        .item-icon {
+            width: 100%;
+            background-color: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            transition: border-color 0.2s;
+        }
+
         /* Modal Styles */
         .modal-overlay {
             position: fixed;
@@ -214,6 +225,27 @@
             cursor: pointer;
             color: var(--text-color);
             line-height: 1;
+        }
+        #itemDetailModal .modal-content {
+            max-width: 450px;
+            text-align: left;
+        }
+        .item-detail-header {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .item-detail-header img {
+            width: 64px;
+            height: 64px;
+        }
+        .item-detail-header h3 {
+            margin: 0;
+        }
+        .item-detail-body .flavor-text {
+            font-style: italic;
+            color: rgba(240, 240, 240, 0.7);
         }
         .inventory-section {
             margin-bottom: 20px;
@@ -304,6 +336,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- Item Detail Modal -->
+        <div id="itemDetailModal" class="modal-overlay">
+            <div class="modal-content">
+                <span id="itemDetailCloseBtn" class="modal-close">&times;</span>
+                <div class="item-detail-header">
+                    <img id="itemDetailIcon" src="">
+                    <h3 id="itemDetailName"></h3>
+                </div>
+                <div id="itemDetailBody" class="item-detail-body"></div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -322,6 +366,11 @@
         const modalCloseBtn = document.getElementById('modalCloseBtn');
         const inventoryContentDiv = document.getElementById('inventoryContent');
         const inventoryCharacterName = document.getElementById('inventoryCharacterName');
+        const itemDetailModal = document.getElementById('itemDetailModal');
+        const itemDetailCloseBtn = document.getElementById('itemDetailCloseBtn');
+        const itemDetailIcon = document.getElementById('itemDetailIcon');
+        const itemDetailName = document.getElementById('itemDetailName');
+        const itemDetailBody = document.getElementById('itemDetailBody');
         const errorDisplayDiv = document.createElement('div');
 
         loginBtn.addEventListener('click', () => {
@@ -362,6 +411,10 @@
 
         modalCloseBtn.addEventListener('click', () => {
             inventoryModal.classList.remove('visible');
+        });
+
+        itemDetailCloseBtn.addEventListener('click', () => {
+            itemDetailModal.classList.remove('visible');
         });
 
         function showContent() {
@@ -480,7 +533,7 @@
                 const destinyMembershipId = destinyProfile.membershipId; // This line was causing the error
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterInventories,ItemInstances`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -523,6 +576,171 @@
 
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
+            const inventoriesData = data.characterInventories.data;
+            const vaultInventory = data.profileInventory.data.items;
+
+            // Create a card for the Vault
+            const vaultCard = document.createElement('div');
+            vaultCard.className = 'character-card';
+            vaultCard.innerHTML = `
+                <div class="character-info">
+                    <h3>Coffre</h3>
+                    <p>Contient ${vaultInventory.length} objets.</p>
+                    <p>Cliquez pour voir le contenu.</p>
+                </div>
+            `;
+            vaultCard.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(https://www.bungie.net/common/destiny2_content/icons/6299343588963060933.jpg)`;
+            vaultCard.addEventListener('click', () => {
+                showInventoryModal('vault', data);
+            });
+            charactersDiv.appendChild(vaultCard);
+
+            for (const characterId of characterIds) {
+                const char = characterData[characterId];
+                if (char) {
+                    const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                    const raceMap = { 0: "Humain", 1: "Éveillé", 2: "Exo" };
+
+                    const card = document.createElement('div');
+                    card.className = 'character-card';
+
+                    let statsHtml = '<div class="stats-grid">';
+                    const stats = char.stats;
+                    const statOrder = {
+                        '2996146975': 'Mobilité',
+                        '392767087': 'Résilience',
+                        '1943323491': 'Récupération',
+                        '1735777505': 'Discipline',
+                        '144602215': 'Intelligence',
+                        '4244567218': 'Force'
+                    };
+
+                    for (const hash in statOrder) {
+                        statsHtml += `
+                            <div class="stat-item">
+                                <span class="stat-value">${stats[hash] || 0}</span>
+                                <span class="stat-label">${statOrder[hash]}</span>
+                            </div>`;
+                    }
+                    statsHtml += '</div>';
+
+                    card.innerHTML = `
+                        <h3>${classMap[char.classType] || 'Inconnue'}</h3>
+                        <p><strong>Lumière :</strong> ${char.light}</p>
+                        <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
+                        ${statsHtml}
+                    `;
+                    
+                    card.addEventListener('click', () => {
+                        showInventoryModal(characterId, data);
+                    });
+
+                    // Use a fallback background if emblem path is missing
+                    const backgroundUrl = char.emblemBackgroundPath 
+                        ? `https://www.bungie.net${char.emblemBackgroundPath}` 
+                        : 'https://www.bungie.net/common/destiny2_content/icons/27a51851464f9e07347a77c83958b9d4.jpg';
+                    card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(${backgroundUrl})`;
+                    card.style.backgroundSize = 'cover';
+                    card.style.backgroundPosition = 'center';
+
+                    charactersDiv.appendChild(card);
+                }
+            }
+        }
+
+        function showInventoryModal(characterId, data) {
+            const itemInstances = data.itemComponents.instances.data;
+            let inventory;
+            let title;
+
+            if (characterId === 'vault') {
+                inventory = data.profileInventory.data.items;
+                title = 'Inventaire du Coffre';
+            } else {
+                const character = data.characters.data[characterId];
+                inventory = data.characterInventories.data[characterId].items;
+                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                title = `Inventaire - ${classMap[character.classType]}`;
+            }
+            inventoryCharacterName.textContent = title;
+            inventoryContentDiv.innerHTML = ''; // Clear previous content
+
+            const weaponBuckets = [1498876634, 2465295065, 953998645];
+            const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+
+            const weapons = inventory.filter(item => weaponBuckets.includes(item.bucketHash));
+            const armor = inventory.filter(item => armorBuckets.includes(item.bucketHash));
+
+            let modalHtml = '';
+
+            if (weapons.length > 0) {
+                modalHtml += '<div class="inventory-section"><h3>Armes</h3><div class="inventory-grid">';
+                weapons.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance ? instance.primaryStat.value : '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item-slot';
+                    modalHtml += `
+                        <div class="item-slot">
+                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                        </div>`;
+                });
+                modalHtml += '</div></div>';
+            }
+
+            if (armor.length > 0) {
+                modalHtml += '<div class="inventory-section"><h3>Armures</h3><div class="inventory-grid">';
+                armor.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance ? instance.primaryStat.value : '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item-slot';
+                    modalHtml += `
+                        <div class="item-slot">
+                            <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                            <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                        </div>`;
+                });
+                modalHtml += '</div></div>';
+            }
+
+            inventoryContentDiv.innerHTML = modalHtml;
+            inventoryModal.classList.add('visible');
+        }
+
+        function showItemDetailModal(item, instanceData) {
+            // This is a placeholder. To get full item details like name and flavor text,
+            // we need to query the Manifest, which is a much more complex operation.
+            itemDetailName.textContent = "Détails de l'objet";
+            itemDetailIcon.src = `https://www.bungie.net${item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png'}`;
+            itemDetailBody.innerHTML = `<p>Afficher les détails complets (nom, attributs, etc.) nécessite une intégration avec le Manifest de Destiny.</p><p class="flavor-text">C'est la prochaine grande étape !</p>`;
+            itemDetailModal.classList.add('visible');
+        }
+
+        function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden'); // Hide the loader
+            profileDataDiv.classList.add('hidden'); // Hide the data section
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
+
+            const profileInfo = data.profile.data.userInfo;
+            userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
+
+            charactersDiv.innerHTML = '';
+
+            const characterData = data.characters.data;
+            const characterIds = data.profile.data.characterIds;
+            const equipmentData = data.characterEquipment.data;
+            const itemInstanceData = data.itemComponents.instances.data;
             const inventoriesData = data.characterInventories.data;
 
             for (const characterId of characterIds) {
@@ -641,38 +859,6 @@
 </body>
  
 </html>
-
-            const profileInfo = data.profile.data.userInfo;
-            userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
-
-            charactersDiv.innerHTML = '';
-
-            const characterData = data.characters.data;
-            const characterIds = data.profile.data.characterIds;
-            const equipmentData = data.characterEquipment.data;
-            const itemInstanceData = data.itemComponents.instances.data;
-            const inventoriesData = data.characterInventories.data;
-
-            for (const characterId of characterIds) {
-                const char = characterData[characterId];
-                if (char) {
-                    const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                    const raceMap = { 0: "Humain", 1: "Éveillé", 2: "Exo" };
-
-                    const card = document.createElement('div');
-                    card.className = 'character-card';
-
-                    let statsHtml = '<div class="stats-grid">';
-                    const stats = char.stats;
-                    const statOrder = {
-                        '2996146975': 'Mobilité',
-                        '392767087': 'Résilience',
-                        '1943323491': 'Récupération',
-                        '1735777505': 'Discipline',
-                        '144602215': 'Intelligence',
-                        '4244567218': 'Force'
-                    };
-
                     for (const hash in statOrder) {
                         statsHtml += `
                             <div class="stat-item">
