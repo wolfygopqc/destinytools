@@ -51,6 +51,23 @@
             width: 100%;
             max-width: 1200px;
         }
+        #logoutBtn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            margin-top: 10px;
+        }
+        #logoutBtn:hover {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+        }
+        .login-container, .content-container {
+            width: 100%;
+            max-width: 1200px;
+        }
         .login-container, .content-container {
             background: var(--primary-color);
             backdrop-filter: blur(10px);
@@ -157,6 +174,7 @@
     <header>
         <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
+        <button id="logoutBtn" class="hidden">Se déconnecter</button>
     </header>
 
     <main>
@@ -191,6 +209,7 @@
         const profileDataDiv = document.getElementById('profileData');
         const userInfoDiv = document.getElementById('userInfo');
         const charactersDiv = document.getElementById('characters');
+        const logoutBtn = document.getElementById('logoutBtn');
 
         loginBtn.addEventListener('click', () => {
             const authUrl = `https://www.bungie.net/fr/OAuth/Authorize?client_id=${BUNGIE_CLIENT_ID}&response_type=code`;
@@ -198,20 +217,45 @@
         });
 
         window.onload = () => {
+            const session = getSessionFromCache();
+            if (session) {
+                console.log("Session trouvée dans le cache.");
+                showContent();
+                // Vérifier si le token a expiré
+                if (Date.now() > session.accessTokenExpiresAt) {
+                    console.log("Access token expiré, tentative de rafraîchissement...");
+                    refreshToken(session.refreshToken);
+                } else {
+                    console.log("Access token valide, récupération des données.");
+                    getProfileDataWithToken(session.accessToken, session.membershipId);
+                }
+                return;
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const authCode = urlParams.get('code');
 
             if (authCode) {
-                loginContainer.classList.add('hidden');
-                contentContainer.classList.remove('hidden');
-                loadingDiv.classList.remove('hidden');
-                profileDataDiv.classList.add('hidden');
+                showContent();
                 window.history.replaceState({}, document.title, window.location.pathname);
-                getProfileData(authCode);
+                getTokensWithAuthCode(authCode);
             }
         };
 
-        async function getProfileData(authCode) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('destinySession');
+            window.location.reload();
+        });
+
+        function showContent() {
+            loginContainer.classList.add('hidden');
+            contentContainer.classList.remove('hidden');
+            loadingDiv.classList.remove('hidden');
+            profileDataDiv.classList.add('hidden');
+            logoutBtn.classList.remove('hidden');
+        }
+
+        async function getTokensWithAuthCode(authCode) {
             try {
                 const tokenResponse = await fetch('https://www.bungie.net/Platform/App/OAuth/Token/', {
                     method: 'POST',
@@ -226,14 +270,54 @@
                 
                 const tokenData = await tokenResponse.json();
                 const accessToken = tokenData.access_token;
+                const refreshToken = tokenData.refresh_token;
                 const membershipId = tokenData.membership_id;
 
+                saveSessionToCache(accessToken, refreshToken, tokenData.expires_in, tokenData.refresh_expires_in, membershipId);
+
+                await getProfileDataWithToken(accessToken, membershipId);
+
+            } catch (error) {
+                handleApiError(error);
+            }
+        }
+
+        async function refreshToken(refresh_token) {
+            try {
+                const tokenResponse = await fetch('https://www.bungie.net/Platform/App/OAuth/Token/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `grant_type=refresh_token&refresh_token=${refresh_token}&client_id=${BUNGIE_CLIENT_ID}`
+                });
+
+                if (!tokenResponse.ok) {
+                    // Si le refresh token est invalide, on force la déconnexion
+                    localStorage.removeItem('destinySession');
+                    window.location.reload();
+                    throw new Error("Session invalide. Veuillez vous reconnecter.");
+                }
+
+                const tokenData = await tokenResponse.json();
+                saveSessionToCache(tokenData.access_token, tokenData.refresh_token, tokenData.expires_in, tokenData.refresh_expires_in, tokenData.membership_id);
+                
+                console.log("Token rafraîchi avec succès.");
+                await getProfileDataWithToken(tokenData.access_token, tokenData.membership_id);
+
+            } catch (error) {
+                handleApiError(error);
+            }
+        }
+
+        async function getProfileDataWithToken(accessToken, membershipId) {
+            try {
                 const userMembershipsResponse = await fetch(`https://www.bungie.net/Platform/User/GetMembershipsById/${membershipId}/-1/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
                 if (!userMembershipsResponse.ok) throw new Error("Impossible de récupérer les profils de l'utilisateur.");
 
                 const userMembershipsData = await userMembershipsResponse.json();
+                if (userMembershipsData.ErrorCode !== 1) throw new Error(userMembershipsData.Message);
+
                 const allDestinyProfiles = userMembershipsData.Response.destinyMemberships;
                 const primaryMembershipId = userMembershipsData.Response.primaryMembershipId;
 
@@ -263,9 +347,24 @@
                 displayData(profileData.Response);
 
             } catch (error) {
-                console.error("Une erreur est survenue dans le processus:", error);
-                loadingDiv.innerHTML = `<p style="color: #ff7b7b;">Erreur: ${error.message}. Veuillez rafraîchir la page et réessayer.</p>`;
+                handleApiError(error);
             }
+        }
+
+        function saveSessionToCache(accessToken, refreshToken, expiresIn, refreshExpiresIn, membershipId) {
+            const session = {
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                accessTokenExpiresAt: Date.now() + (expiresIn * 1000),
+                refreshTokenExpiresAt: Date.now() + (refreshExpiresIn * 1000),
+                membershipId: membershipId
+            };
+            localStorage.setItem('destinySession', JSON.stringify(session));
+        }
+
+        function getSessionFromCache() {
+            const sessionStr = localStorage.getItem('destinySession');
+            return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
         function displayData(data) {
@@ -324,6 +423,11 @@
                     charactersDiv.appendChild(card);
                 }
             }
+        }
+
+        function handleApiError(error) {
+            console.error("Une erreur est survenue dans le processus:", error);
+            loadingDiv.innerHTML = `<p style="color: #ff7b7b;">Erreur: ${error.message}. Veuillez rafraîchir la page et réessayer.</p>`;
         }
     </script>
 </body>
