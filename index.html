@@ -835,7 +835,6 @@
             inventoryModal.classList.add('visible');
         }
 
-        async function showItemDetailModal(item, data) {
         async function showItemDetailModal(item, data, characterId) {
             try {
                 const itemDef = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
