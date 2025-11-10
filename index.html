@@ -201,6 +201,10 @@
             cursor: pointer;
         }
 
+        .character-card .equipment-grid {
+            margin-top: 15px;
+        }
+
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -333,6 +337,9 @@
             grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 8px;
         }
+        #vaultDisplayContainer {
+            margin-top: 30px;
+        }
 
         .loader {
             border: 4px solid var(--border-color);
@@ -404,6 +411,11 @@
             </div>
         </div>
 
+        <div id="vaultDisplayContainer" class="content-container hidden">
+            <h2>Votre Coffre</h2>
+            <div id="vaultGrid" class="inventory-grid"></div>
+        </div>
+
         <div id="inventoryModal" class="modal-overlay">
             <div class="modal-content">
                 <span id="modalCloseBtn" class="modal-close">&times;</span>
@@ -447,6 +459,8 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         let currentOpenItem = null;
+        const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
+        const vaultGrid = document.getElementById('vaultGrid');
         const errorDisplayDiv = document.createElement('div');
         const perkDefinitionsCache = {};
         const refreshBtn = document.getElementById('refreshBtn');
@@ -483,6 +497,7 @@
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
             }
+            vaultDisplayContainer.classList.add('hidden');
             localStorage.removeItem('destinySession');
             window.location.reload();
         });
@@ -654,22 +669,81 @@
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
             const vaultInventory = data.profileInventory?.data?.items || [];
+            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
-            const vaultCard = document.createElement('div');
-            vaultCard.className = 'character-card';
-            vaultCard.innerHTML = `
-                <div class="character-info">
-                    <h3>Coffre</h3>
-                    <p>Contient ${vaultInventory.length} objets.</p>
-                    <p>Cliquez pour voir le contenu.</p>
-                </div>
-            `;
-            vaultCard.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(https://www.bungie.net/common/destiny2_content/icons/6299343588963060933.jpg)`;
-            vaultCard.addEventListener('click', () => {
-                showInventoryModal('vault', data);
-            });
-            charactersDiv.appendChild(vaultCard);
+            if (vaultInventory.length > 0) {
+                vaultGrid.innerHTML = '';
 
+                const weaponBuckets = [1498876634, 2465295065, 953998645];
+                const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+
+                const vaultWeapons = vaultInventory.filter(item => weaponBuckets.includes(item.bucketHash));
+                const vaultArmor = vaultInventory.filter(item => armorBuckets.includes(item.bucketHash));
+
+                const createVaultSection = (title, items) => {
+                    if (items.length === 0) return;
+
+                    const section = document.createElement('div');
+                    section.className = 'inventory-section';
+                    const sectionTitle = document.createElement('h3');
+                    sectionTitle.textContent = title;
+                    section.appendChild(sectionTitle);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'inventory-grid';
+
+                    items.forEach(item => {
+                        const instance = itemInstances[item.itemInstanceId];
+                        const power = instance?.primaryStat?.value || '';
+                        const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                        const itemElement = document.createElement('div');
+                        itemElement.className = 'item-slot';
+                        itemElement.innerHTML = `<img src="https://www.bungie.net${iconPath}" class="item-icon"><span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
+                        itemElement.addEventListener('click', () => showItemDetailModal(item, data, 'vault'));
+                        grid.appendChild(itemElement);
+                    });
+                    section.appendChild(grid);
+                    vaultGrid.appendChild(section);
+                };
+
+                createVaultSection('Armes', vaultWeapons);
+                createVaultSection('Armures', vaultArmor);
+
+                vaultDisplayContainer.classList.remove('hidden');
+            } else {
+                vaultDisplayContainer.classList.add('hidden');
+            }
+
+            const weaponBuckets = [1498876634, 2465295065, 953998645];
+            const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+            const relevantSlots = [...weaponBuckets, ...armorBuckets];
+
+            const createEquippedGrid = (inventory, characterId) => {
+                const equippedItems = inventory.filter(item => item.isEquipped && relevantSlots.includes(item.bucketHash));
+                equippedItems.sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash));
+
+                let gridHtml = '<div class="inventory-grid">';
+                equippedItems.forEach(item => {
+                    const instance = itemInstances[item.itemInstanceId];
+                    const power = instance?.primaryStat?.value || '';
+                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+                    
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item-slot';
+                    itemElement.innerHTML = `
+                        <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                        <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+                    `;
+                    // We add the event listener directly here to avoid issues with innerHTML
+                    itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
+                    gridHtml += itemElement.outerHTML;
+                });
+                gridHtml += '</div>';
+                return gridHtml;
+            };
+
+
+            // Display Character Cards
             for (const characterId of characterIds) {
                 const char = characterData[characterId];
                 if (char) {
@@ -699,11 +773,15 @@
                     }
                     statsHtml += '</div>';
 
+                    const characterInventory = data.characterInventories?.data?.[characterId]?.items || [];
+                    const equipmentHtml = createEquippedGrid(characterInventory, characterId);
+
                     card.innerHTML = `
                         <h3>${classMap[char.classType] || 'Inconnue'}</h3>
                         <p><strong>Lumière :</strong> ${char.light}</p>
                         <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                         ${statsHtml}
+                        ${equipmentHtml}
                     `;
                     
                     card.addEventListener('click', () => {
@@ -716,6 +794,14 @@
                     card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(${backgroundUrl})`;
                     card.style.backgroundSize = 'cover';
                     card.style.backgroundPosition = 'center';
+
+                    // Re-attach listeners for equipped items on the card
+                    const cardItemSlots = card.querySelectorAll('.item-slot');
+                    const equippedItems = characterInventory.filter(item => item.isEquipped && relevantSlots.includes(item.bucketHash));
+                    equippedItems.sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash));
+                    cardItemSlots.forEach((slot, index) => {
+                        slot.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(equippedItems[index], data, characterId); });
+                    });
 
                     charactersDiv.appendChild(card);
                 }
@@ -739,19 +825,15 @@
         }
 
         function showInventoryModal(characterId, data) {
-            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = data.itemComponents?.instances?.data || {};
             let inventory;
             let title;
 
-            if (characterId === 'vault') {
-                inventory = data.profileInventory?.data?.items || [];
-                title = 'Inventaire du Coffre';
-            } else {
-                const character = data.characters.data[characterId];
-                inventory = data.characterInventories?.data?.[characterId]?.items || [];
-                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                title = `Inventaire - ${classMap[character.classType]}`;
-            }
+            const character = data.characters.data[characterId];
+            inventory = data.characterInventories?.data?.[characterId]?.items || [];
+            const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+            title = `Inventaire - ${classMap[character.classType]}`;
+
             inventoryCharacterName.textContent = title;
             inventoryContentDiv.innerHTML = '';
 
@@ -775,6 +857,7 @@
                         <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
+                    itemElement.addEventListener('click', () => showItemDetailModal(item, data));
                     itemElement.addEventListener('click', () => showItemDetailModal(item, data, characterId));
                     inventoryContentDiv.querySelector('.inventory-grid:last-child').appendChild(itemElement);
                 });
@@ -808,6 +891,7 @@
                     // This is a simplified mapping, might need improvement for more complex inventories
                     const item = allItems[index];
                     if (item) {
+                        slot.addEventListener('click', () => showItemDetailModal(item));
                         slot.addEventListener('click', () => showItemDetailModal(item, data, characterId));
                     }
                 });
@@ -878,7 +962,7 @@
             if (perkDefinitionsCache[hash]) {
                 return perkDefinitionsCache[hash];
             }
-            const response = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/${defType}/${hash}/?lc=fr`, {
+            const response = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/${defType}/${hash}/`, {
                 headers: { 'X-API-Key': BUNGIE_API_KEY }
             });
             if (!response.ok) return null;
@@ -901,21 +985,191 @@
             });
 
             try {
+                // Step 1: Move item to vault (if it's on a character and not going to the vault already)
+                if (sourceCharacterId !== 'vault' && targetCharacterId !== 'vault') {
+                    const toVaultResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
+                        method: 'POST',
+                        headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
+                        body: JSON.stringify({
+                            itemReferenceHash: itemHash,
+                            stackSize: quantity,
+                            transferToVault: true,
+                            itemId: itemId,
+                            characterId: sourceCharacterId,
+                            membershipType: destinyProfile.membershipType
+                        })
+                    });
+                    const toVaultData = await toVaultResponse.json();
+                    if (toVaultData.ErrorCode !== 1) throw new Error(`Étape 1/2: ${toVaultData.Message}`);
+                }
+
+                // Step 2: Move item from vault to target character OR from character to vault
+                const finalTransferCharacter = (sourceCharacterId === 'vault') ? targetCharacterId : sourceCharacterId;
+                const fromVaultResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
+                    method: 'POST',
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
+                    body: JSON.stringify({
+                        itemReferenceHash: itemHash,
+                        stackSize: quantity,
+                        transferToVault: targetCharacterId === 'vault',
+                        itemId: itemId,
+                        characterId: finalTransferCharacter,
+                        membershipType: destinyProfile.membershipType
+                    })
+                });
+                const fromVaultData = await fromVaultResponse.json();
+                if (fromVaultData.ErrorCode !== 1) {
+                    const step = (sourceCharacterId !== 'vault' && targetCharacterId !== 'vault') ? 'Étape 2/2' : 'Étape 1/1';
+                    throw new Error(`${step}: ${fromVaultData.Message}`);
+                }
+                alert('Objet transféré avec succès !');
+                itemDetailModal.classList.remove('visible');
+                inventoryModal.classList.remove('visible');
+                refreshBtn.click();
+            } catch (error) {
+                alert(`Erreur lors du transfert : ${error.message}`);
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    // This is a simplification, ideally you'd restore the original text
+                    btn.textContent = 'Réessayer';
+                });
+            }
+        }
+
+        function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.add('hidden');
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
+            transferBtn.textContent = 'Transfert en cours...';
+            const buttons = document.querySelectorAll('#itemActions .action-button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            try {
+                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': BUNGIE_API_KEY,
+                        'Authorization': `Bearer ${session.accessToken}`
+                    },
+                    body: JSON.stringify({
+                        itemReferenceHash: item.itemHash,
+                        stackSize: item.quantity,
+                        transferToVault: true,
+                        itemId: item.itemInstanceId,
+                        characterId: characterId,
+                        transferToVault: targetCharacterId === 'vault',
+                        itemId: itemId,
+                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId, // API needs a valid characterId even for vault->char
+                        membershipType: destinyProfile.membershipType
+                    })
+                });
+                const responseData = await response.json();
+                if (responseData.ErrorCode !== 1) {
+                    throw new Error(responseData.Message);
+                }
+                alert('Objet transféré avec succès !');
+                itemDetailModal.classList.remove('visible');
+                inventoryModal.classList.remove('visible');
+                refreshBtn.click();
+            } catch (error) {
+                alert(`Erreur lors du transfert : ${error.message}`);
+                transferBtn.disabled = false;
+                transferBtn.textContent = 'Transférer au coffre';
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.add('hidden');
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
+                itemDetailBody.innerHTML = bodyHtml;
+                itemDetailModal.classList.add('visible');
+
+            } catch (error) {
+                console.error("Erreur lors de l'affichage des détails de l'objet:", error);
+                itemDetailName.textContent = "Erreur";
+                itemDetailBody.innerHTML = `<p>${error.message}</p>`;
+                itemDetailModal.classList.add('visible');
+            }
+        }
+
+        async function getDefinition(defType, hash) {
+            if (perkDefinitionsCache[hash]) {
+                return perkDefinitionsCache[hash];
+            }
+            const response = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/${defType}/${hash}/?lc=fr`, {
+            const response = await fetch(`https://www.bungie.net/Platform/Destiny2/Manifest/${defType}/${hash}/`, {
+                headers: { 'X-API-Key': BUNGIE_API_KEY }
+            });
+            if (!response.ok) return null;
+            const data = await response.json();
+            perkDefinitionsCache[hash] = data.Response;
+            return data.Response;
+        }
+
+        async function transferItem(itemId, sourceCharacterId, targetCharacterId, itemHash, quantity) {
+            if (!currentOpenItem) return;
+
+            const { allData } = currentOpenItem;
+            const session = getSessionFromCache();
+            const destinyProfile = allData.profile.data.userInfo;
+
+            const buttons = document.querySelectorAll('#itemActions .action-button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.textContent = 'Transfert...';
+            });
+
+            try {
+                // Step 1: Move item to vault (if it's on a character and not going to the vault already)
                 if (sourceCharacterId !== 'vault' && targetCharacterId !== 'vault') {
                     const toVaultResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
                         method: 'POST',
                         headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
                         body: JSON.stringify({ itemReferenceHash: itemHash, stackSize: quantity, transferToVault: true, itemId: itemId, characterId: sourceCharacterId, membershipType: destinyProfile.membershipType })
+                        body: JSON.stringify({
+                            itemReferenceHash: itemHash,
+                            stackSize: quantity,
+                            transferToVault: true,
+                            itemId: itemId,
+                            characterId: sourceCharacterId,
+                            membershipType: destinyProfile.membershipType
+                        })
                     });
                     const toVaultData = await toVaultResponse.json();
                     if (toVaultData.ErrorCode !== 1) throw new Error(`Étape 1/2: ${toVaultData.Message}`);
                 }
 
                 const finalTransferCharacter = (sourceCharacterId === 'vault') ? targetCharacterId : (targetCharacterId === 'vault' ? sourceCharacterId : targetCharacterId);
+                // Step 2: Move item from vault to target character OR from character to vault
+                const finalTransferCharacter = (sourceCharacterId === 'vault') ? targetCharacterId : sourceCharacterId;
                 const fromVaultResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
                     method: 'POST',
                     headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
                     body: JSON.stringify({ itemReferenceHash: itemHash, stackSize: quantity, transferToVault: targetCharacterId === 'vault', itemId: itemId, characterId: finalTransferCharacter, membershipType: destinyProfile.membershipType })
+                    body: JSON.stringify({
+                        itemReferenceHash: itemHash,
+                        stackSize: quantity,
+                        transferToVault: targetCharacterId === 'vault',
+                        itemId: itemId,
+                        characterId: finalTransferCharacter,
+                        membershipType: destinyProfile.membershipType
+                    })
                 });
                 const fromVaultData = await fromVaultResponse.json();
                 if (fromVaultData.ErrorCode !== 1) {
@@ -931,6 +1185,8 @@
                 buttons.forEach(btn => {
                     btn.disabled = false;
                     btn.textContent = 'Réessayer'; 
+                    // This is a simplification, ideally you'd restore the original text
+                    btn.textContent = 'Réessayer';
                 });
             }
         }
@@ -938,24 +1194,59 @@
         async function equipItem(itemId, characterId) {
             const session = getSessionFromCache();
             const destinyProfile = currentOpenItem.allData.profile.data.userInfo;
+        function handleApiError(error) {
+            console.error("Une erreur API est survenue:", error);
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.add('hidden');
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html>
+            transferBtn.textContent = 'Transfert en cours...';
             const buttons = document.querySelectorAll('#itemActions .action-button');
             buttons.forEach(btn => btn.disabled = true);
 
             try {
                 const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItem/', {
+                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
                     method: 'POST',
                     headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
                     body: JSON.stringify({ itemId: itemId, characterId: characterId, membershipType: destinyProfile.membershipType })
+                    headers: {
+                        'X-API-Key': BUNGIE_API_KEY,
+                        'Authorization': `Bearer ${session.accessToken}`
+                    },
+                    body: JSON.stringify({
+                        itemReferenceHash: item.itemHash,
+                        stackSize: item.quantity,
+                        transferToVault: true,
+                        itemId: item.itemInstanceId,
+                        characterId: characterId,
+                        transferToVault: targetCharacterId === 'vault',
+                        itemId: itemId,
+                        characterId: sourceCharacterId === 'vault' ? allData.profile.data.characterIds[0] : sourceCharacterId, // API needs a valid characterId even for vault->char
+                        membershipType: destinyProfile.membershipType
+                    })
                 });
                 const responseData = await response.json();
                 if (responseData.ErrorCode !== 1) throw new Error(responseData.Message);
 
                 alert('Objet équipé avec succès !');
+                if (responseData.ErrorCode !== 1) {
+                    throw new Error(responseData.Message);
+                }
+                alert('Objet transféré avec succès !');
                 itemDetailModal.classList.remove('visible');
                 inventoryModal.classList.remove('visible');
                 refreshBtn.click();
             } catch (error) {
                 alert(`Erreur lors de l'équipement : ${error.message}`);
+                alert(`Erreur lors du transfert : ${error.message}`);
+                transferBtn.disabled = false;
+                transferBtn.textContent = 'Transférer au coffre';
                 buttons.forEach(btn => btn.disabled = false);
             }
         }
