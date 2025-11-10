@@ -337,6 +337,15 @@
             grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 8px;
         }
+        #vaultGrid {
+            grid-template-columns: repeat(8, 1fr);
+        }
+        .empty-slot {
+            width: 64px;
+            height: 64px;
+            background-color: rgba(0,0,0,0.2);
+            border: 1px dashed var(--border-color);
+        }
         #vaultDisplayContainer {
             margin-top: 30px;
         }
@@ -700,14 +709,29 @@
                         itemElement.className = 'item-slot';
                         itemElement.innerHTML = `<img src="https://www.bungie.net${iconPath}" class="item-icon"><span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
                         itemElement.addEventListener('click', () => showItemDetailModal(item, data, 'vault'));
+                        const itemElement = createItemElement(item, itemInstances, data, 'vault');
                         grid.appendChild(itemElement);
                     });
+
+                    // Add empty slots to fill the row
+                    const remainder = items.length % 8;
+                    if (remainder > 0) {
+                        const emptySlotsToAdd = 8 - remainder;
+                        for (let i = 0; i < emptySlotsToAdd; i++) {
+                            const emptySlot = document.createElement('div');
+                            emptySlot.className = 'empty-slot';
+                            grid.appendChild(emptySlot);
+                        }
+                    }
+
                     section.appendChild(grid);
                     vaultGrid.appendChild(section);
                 };
 
                 createVaultSection('Armes', vaultWeapons);
                 createVaultSection('Armures', vaultArmor);
+                createVaultSection('Armes du coffre', vaultWeapons);
+                createVaultSection('Armures du coffre', vaultArmor);
 
                 vaultDisplayContainer.classList.remove('hidden');
             } else {
@@ -735,6 +759,7 @@
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
                     itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
+                    const itemElement = createItemElement(item, itemInstances, data, characterId);
                     gridHtml += itemElement.outerHTML;
                 });
                 gridHtml += '</div>';
@@ -861,6 +886,7 @@
                         <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
                     `;
                     itemElement.addEventListener('click', () => showItemDetailModal(item, data, characterId));
+                    const itemElement = createItemElement(item, itemInstances, data, characterId);
                     grid.appendChild(itemElement);
                 });
 
@@ -883,6 +909,21 @@
             createSection('Armures en inventaire', inventoryArmor);
 
             inventoryModal.classList.add('visible');
+        }
+
+        function createItemElement(item, itemInstances, data, characterId) {
+            const instance = itemInstances[item.itemInstanceId];
+            const power = instance?.primaryStat?.value || '';
+            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+            
+            const itemElement = document.createElement('div');
+            itemElement.className = 'item-slot';
+            itemElement.innerHTML = `
+                <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
+                <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
+            `;
+            itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
+            return itemElement;
         }
 
         async function showItemDetailModal(item, data, characterId) {
