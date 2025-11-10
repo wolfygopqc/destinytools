@@ -574,39 +574,77 @@
         searchPlayerBtn.addEventListener('click', async () => {
             const searchInput = document.getElementById('searchPlayerInput');
             const bungieNameFull = searchInput.value.trim();
-            const parts = bungieNameFull.split('#');
 
-            if (parts.length !== 2 || !parts[0] || !parts[1]) {
-                alert("Veuillez entrer un nom au format 'Nom#1234'.");
+            if (!bungieNameFull) {
+                alert("Veuillez entrer un nom à rechercher.");
                 return;
             }
-
-            const displayName = parts[0];
-            const displayNameCode = parts[1];
 
             playerProfileModal.classList.add('visible');
             const playerProfileContent = document.getElementById('playerProfileContent');
             const playerProfileName = document.getElementById('playerProfileName');
-            playerProfileName.textContent = `Recherche de ${bungieNameFull}...`;
+            playerProfileName.textContent = `Recherche de "${bungieNameFull}"...`;
+            playerProfileContent.innerHTML = '<div class="loader"></div>';
+
+            const parts = bungieNameFull.split('#');
+
+            // Si le nom contient un #, on fait une recherche exacte
+            if (parts.length === 2 && parts[0] && parts[1]) {
+                const displayName = parts[0];
+                const displayNameCode = parts[1];
+                try {
+                    const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/SearchDestinyPlayerByBungieName/-1/`, {
+                        method: 'POST',
+                        headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ displayName, displayNameCode })
+                    });
+                    const searchData = await searchResponse.json();
+                    if (searchData.ErrorCode !== 1 || searchData.Response.length === 0) {
+                        throw new Error("Joueur introuvable.");
+                    }
+                    const playerData = searchData.Response[0];
+                    await showPlayerProfile(playerData.membershipType, playerData.membershipId, playerData.bungieGlobalDisplayName, playerData.bungieGlobalDisplayNameCode);
+                } catch (error) {
+                    playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur : ${error.message}</p>`;
+                }
+            } else { // Sinon, on recherche par préfixe
+                try {
+                    const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/Search/Global/Name/0/`, {
+                        method: 'POST',
+                        headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ displayNamePrefix: bungieNameFull })
+                    });
+                    const searchData = await searchResponse.json();
+                    if (searchData.ErrorCode !== 1 || searchData.Response.searchResults.length === 0) {
+                        throw new Error("Aucun joueur trouvé pour ce nom.");
+                    }
+
+                    playerProfileName.textContent = `Résultats pour "${bungieNameFull}"`;
+                    playerProfileContent.innerHTML = '';
+                    searchData.Response.searchResults.forEach(player => {
+                        const playerDiv = document.createElement('div');
+                        playerDiv.className = 'player-search-result';
+                        playerDiv.style = 'display: flex; align-items: center; padding: 10px; cursor: pointer; border-bottom: 1px solid var(--border-color);';
+                        playerDiv.innerHTML = `<img src="https://www.bungie.net${player.iconPath}" style="width: 48px; height: 48px; margin-right: 15px;"> <span>${player.bungieGlobalDisplayName}#${player.bungieGlobalDisplayNameCode}</span>`;
+                        playerDiv.onclick = () => showPlayerProfile(player.membershipType, player.membershipId, player.bungieGlobalDisplayName, player.bungieGlobalDisplayNameCode);
+                        playerProfileContent.appendChild(playerDiv);
+                    });
+                } catch (error) {
+                    playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur : ${error.message}</p>`;
+                }
+            }
+        });
+
+        async function showPlayerProfile(membershipType, membershipId, displayName, displayCode) {
+            const playerProfileContent = document.getElementById('playerProfileContent');
+            const playerProfileName = document.getElementById('playerProfileName');
+            playerProfileName.textContent = `Profil de ${displayName}#${displayCode}`;
+            playerProfileContent.innerHTML = '<div class="loader"></div>';
 
             try {
-                const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/SearchDestinyPlayerByBungieName/-1/`, {
-                    method: 'POST',
-                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ displayName, displayNameCode })
-                });
-                const searchData = await searchResponse.json();
-
-                if (searchData.ErrorCode !== 1 || searchData.Response.length === 0) {
-                    throw new Error("Joueur introuvable.");
-                }
-
-                const playerData = searchData.Response[0];
-                playerProfileName.textContent = `Profil de ${playerData.bungieGlobalDisplayName}#${playerData.bungieGlobalDisplayNameCode}`;
-
                 const session = getSessionFromCache();
                 const components = [100, 200, 205, 300, 304, 305].join(',');
-                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${playerData.membershipType}/Profile/${playerData.membershipId}/?components=${components}`, {
+                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/?components=${components}`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
                 });
                 const profileData = await profileResponse.json();
@@ -616,6 +654,11 @@
                 playerProfileContent.innerHTML = '';
                 const itemInstances = response.itemComponents?.instances?.data || {};
 
+                if (!response.profile.data.characterIds) {
+                    playerProfileContent.innerHTML = `<p>Ce joueur n'a pas de personnages visibles.</p>`;
+                    return;
+                }
+
                 for (const characterId of response.profile.data.characterIds) {
                     const characterCard = createCharacterCard(characterId, response, itemInstances);
                     if (characterCard) {
@@ -623,9 +666,9 @@
                     }
                 }
             } catch (error) {
-                playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur : ${error.message}</p>`;
+                playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du profil : ${error.message}</p>`;
             }
-        });
+        }
 
         function showContent() {
             loginContainer.classList.add('hidden');
