@@ -325,6 +325,34 @@
         #itemDetailIcon.rarity-border-3 { border-color: #366f42; }
         #itemDetailIcon.rarity-border-2 { border-color: #c3bcb4; }
 
+        .weapon-stats-section {
+            margin-top: 20px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+        .stat-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .stat-info {
+            flex-basis: 120px;
+            flex-shrink: 0;
+            text-align: right;
+            font-size: 0.9em;
+        }
+        .stat-bar-wrapper {
+            flex-grow: 1;
+            background-color: rgba(0,0,0,0.3);
+            height: 10px;
+        }
+        .stat-bar {
+            background-color: var(--text-color);
+            height: 100%;
+        }
+        .stat-value-text { width: 30px; text-align: left; font-weight: bold; }
+
         .inventory-section {
             margin-bottom: 20px;
         }
@@ -670,7 +698,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -920,32 +948,27 @@
                     <p class="flavor-text">${itemDef.flavorText || ''}</p>
                 `;
                 
-                let actionsHtml = '<div id="itemActions">';
-                const allCharacterIds = data.profile.data.characterIds;
+                const weaponStats = data.itemComponents?.stats?.data?.[item.itemInstanceId]?.stats;
+                if (weaponStats) {
+                    bodyHtml += '<div class="weapon-stats-section"><h4>Statistiques</h4>';
+                    const statDefs = await Promise.all(Object.keys(weaponStats).map(hash => getDefinition('DestinyStatDefinition', hash)));
 
-                if (characterId !== 'vault') {
-                    actionsHtml += `<button class="action-button" onclick="transferItem('${item.itemInstanceId}', '${characterId}', 'vault', '${item.itemHash}', ${item.quantity})">Transférer au coffre</button>`;
-                    allCharacterIds.filter(id => id !== characterId).forEach(targetId => {
-                        const targetChar = data.characters.data[targetId];
-                        const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                        actionsHtml += `<button class="action-button" onclick="transferItem('${item.itemInstanceId}', '${characterId}', '${targetId}', '${item.itemHash}', ${item.quantity})">Transférer à : ${classMap[targetChar.classType]}</button>`;
-                    });
-                } else {
-                     allCharacterIds.forEach(targetId => {
-                        const targetChar = data.characters.data[targetId];
-                        const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                        actionsHtml += `<button class="action-button" onclick="transferItem('${item.itemInstanceId}', 'vault', '${targetId}', '${item.itemHash}', ${item.quantity})">Transférer à : ${classMap[targetChar.classType]}</button>`;
-                    });
-                    if (itemDef.equippable) {
-                        allCharacterIds.forEach(targetId => {
-                            const targetChar = data.characters.data[targetId];
-                            const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                            actionsHtml += `<button class="action-button" onclick="equipItem('${item.itemInstanceId}', '${targetId}')">Équiper sur : ${classMap[targetChar.classType]}</button>`;
-                        });
+                    for (const statDef of statDefs.filter(def => def && def.displayProperties.name)) {
+                        const statValue = weaponStats[statDef.hash].value;
+                        if (statDef.displayProperties.name && statValue > 0) { // Only show relevant stats
+                            bodyHtml += `
+                                <div class="stat-bar-container">
+                                    <div class="stat-info">${statDef.displayProperties.name}</div>
+                                    <div class="stat-bar-wrapper">
+                                        <div class="stat-bar" style="width: ${statValue}%;"></div>
+                                    </div>
+                                    <div class="stat-value-text">${statValue}</div>
+                                </div>
+                            `;
+                        }
                     }
+                    bodyHtml += '</div>';
                 }
-                actionsHtml += '</div>';
-                bodyHtml += actionsHtml;
 
                 const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || 
                                   data.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
