@@ -16,10 +16,6 @@
             --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             --hover-color: #fff;
         }
-        canvas {
-            outline: none;
-            background-color: transparent;
-        }
 
         body {
             background-image: url('https://www.bungie.net/img/destiny_content/pgcr/background_decal.png');
@@ -164,11 +160,10 @@
             flex-shrink: 0;
             width: 150px;
             height: 320px;
+            background-size: cover;
+            background-position: center;
             border-left: 1px solid var(--border-color);
             padding-left: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .character-card h3 {
@@ -203,6 +198,36 @@
         .stat-value {
             font-size: 1.1em;
             font-weight: bold;
+        }
+        .progressions-grid {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .progression-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .progression-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .progression-bar-wrapper {
+            flex-grow: 1;
+            background-color: rgba(0,0,0,0.3);
+            height: 12px;
+            position: relative;
+        }
+        .progression-bar {
+            background-color: var(--accent-color);
+            height: 100%;
+        }
+        .progression-text {
+            font-size: 0.8em;
+            white-space: nowrap;
         }
 
         .equipment-grid {
@@ -519,9 +544,6 @@
         </div>
     </main>
 
-    <script src="https://www.bungie.net/sharedbundle/spasm"></script>
-    <script src="SpasmRenderer.js"></script>
-
     <script>
         const BUNGIE_CLIENT_ID = "51007";
         const BUNGIE_API_KEY = "d1fc55de14f441619f05e51c761dcca6";
@@ -715,6 +737,7 @@
                     102,
                     200,
                     201,
+                    202,
                     203,
                     205,
                     300,
@@ -853,26 +876,30 @@
                     equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
 
+            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`;
+            const renderData = data.characterRenderData?.data?.[characterId];
+            if (renderData && renderData.peerView) {
+                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
+                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/Character/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
+            }
+
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
                     <p><strong>Lumière :</strong> ${char.light}</p>
                     <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                     ${statsHtml}
+                    <div class="progressions-grid"></div>
                 </div>
-                <div class="character-render">
-                    <canvas id="render-canvas-${characterId}" width="150" height="320"></canvas>
-                </div>
+                <div class="character-render" style="background-image: url('${renderImageUrl}')"></div>
             `;
             card.querySelector('.character-info').appendChild(equipmentGrid);
 
-            setTimeout(() => {
-                const canvas = document.getElementById(`render-canvas-${characterId}`);
-                const renderData = data.characterRenderData?.data?.[characterId];
-                if (canvas && renderData) {
-                    new SpasmRenderer(canvas, char, renderData, 'https://www.bungie.net');
-                }
-            }, 0);
+            const progressionsGrid = card.querySelector('.progressions-grid');
+            if (data.characterProgressions?.data?.[characterId]?.progressions) {
+                const progressionsData = data.characterProgressions.data[characterId].progressions;
+                displayProgressions(progressionsGrid, progressionsData);
+            }
 
             const backgroundUrl = char.emblemBackgroundPath 
                 ? `https://www.bungie.net${char.emblemBackgroundPath}` 
@@ -882,6 +909,35 @@
             card.style.backgroundPosition = 'center';
 
             return card;
+        }
+
+        async function displayProgressions(container, progressions) {
+            const relevantProgressions = {
+                '2030104769': 'Gambit',
+                '275567042': 'Épreuve',
+                '616312568': 'Avant-garde'
+            };
+
+            for (const hash in progressions) {
+                if (hash in relevantProgressions) {
+                    const prog = progressions[hash];
+                    const def = await getDefinition('DestinyProgressionDefinition', hash);
+                    if (!def) continue;
+
+                    const progressPercent = (prog.progressToNextLevel / prog.nextLevelAt) * 100;
+
+                    const item = document.createElement('div');
+                    item.className = 'progression-item';
+                    item.innerHTML = `
+                        <img src="https://www.bungie.net${def.displayProperties.icon}" class="progression-icon" title="${def.displayProperties.name}">
+                        <div class="progression-bar-wrapper">
+                            <div class="progression-bar" style="width: ${progressPercent}%"></div>
+                        </div>
+                        <span class="progression-text">Rang ${prog.level}</span>
+                    `;
+                    container.appendChild(item);
+                }
+            }
         }
 
         function showInventoryModal(characterId, data) {
