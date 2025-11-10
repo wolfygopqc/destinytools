@@ -780,7 +780,7 @@
 
             try {
                 const session = getSessionFromCache();
-                const components = [100, 200, 201, 202, 205, 300, 304, 305, 402].join(',');
+                const components = [100, 200, 201, 202, 205, 300, 304, 305].join(',');
                 const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/?components=${components}`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
                 });
@@ -910,7 +910,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305, 402].join(',');
+                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
@@ -921,7 +921,7 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-                displayData(profileData.Response);
+                await displayData(profileData.Response);
 
             } catch (error) {
                 handleApiError(error);
@@ -1073,55 +1073,7 @@
                 }
             }
 
-            vendorsList.innerHTML = '';
-            const vendorHashes = {
-                XUR: 2190858386,
-                BANSHEE: 672118013,
-                ADA: 350061650
-            };
-            const vendorSales = data.sales.data;
-            if (vendorSales) {
-                for (const vendorKey in vendorHashes) {
-                    const vendorHash = vendorHashes[vendorKey];
-                    if (vendorSales[vendorHash]) {
-                        const vendorDef = await getDefinition('DestinyVendorDefinition', vendorHash);
-                        const sales = vendorSales[vendorHash].saleItems;
-
-                        let itemsHtml = '';
-                        for (const saleKey in sales) {
-                            const saleItem = sales[saleKey];
-                            const itemDef = await getDefinition('DestinyInventoryItemDefinition', saleItem.itemHash);
-
-                            let costsHtml = '';
-                            for (const cost of saleItem.costs) {
-                                const costDef = await getDefinition('DestinyInventoryItemDefinition', cost.itemHash);
-                                costsHtml += `<img src="https://www.bungie.net${costDef.displayProperties.icon}" title="${costDef.displayProperties.name}" style="width: 16px; height: 16px;"> ${cost.quantity}`;
-                            }
-
-                            itemsHtml += `
-                                <div class="vendor-item">
-                                    <img src="https://www.bungie.net${itemDef.displayProperties.icon}" class="rarity-border-${itemDef.inventory.tierType}" style="border-width: 2px; border-style: solid;">
-                                    <div>
-                                        <strong>${itemDef.displayProperties.name}</strong>
-                                        <div class="vendor-item-costs">${costsHtml}</div>
-                                    </div>
-                                </div>
-                            `;
-                        }
-
-                        vendorsList.innerHTML += `
-                            <div class="vendor-card">
-                                <div class="vendor-header">
-                                    <img src="https://www.bungie.net${vendorDef.displayProperties.icon}">
-                                    <h3>${vendorDef.displayProperties.name}</h3>
-                                </div>
-                                <div class="vendor-inventory">
-                                    ${itemsHtml}
-                                </div>
-                            </div>`;
-                    }
-                }
-            }
+            await displayVendors(data);
 
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
@@ -1136,6 +1088,71 @@
                     clearInterval(refreshIntervalId);
                 }
             }, 300000);
+        }
+
+        async function displayVendors(profileData) {
+            const session = getSessionFromCache();
+            if (!session || !profileData.profile.data.characterIds.length) return;
+
+            const characterId = profileData.profile.data.characterIds[0];
+            const { membershipType, membershipId } = currentUserInfo;
+
+            try {
+                const vendorResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/Character/${characterId}/Vendors/?components=402`, {
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
+                });
+                const vendorData = await vendorResponse.json();
+                if (vendorData.ErrorCode !== 1) {
+                    throw new Error(vendorData.Message);
+                }
+
+                vendorsList.innerHTML = '';
+                const vendorHashes = { XUR: 2190858386, BANSHEE: 672118013, ADA: 350061650 };
+                const vendorSales = vendorData.Response.sales.data;
+
+                if (vendorSales) {
+                    for (const vendorKey in vendorHashes) {
+                        const vendorHash = vendorHashes[vendorKey];
+                        if (vendorSales[vendorHash]) {
+                            const vendorDef = await getDefinition('DestinyVendorDefinition', vendorHash);
+                            const sales = vendorSales[vendorHash].saleItems;
+
+                            let itemsHtml = '';
+                            for (const saleKey in sales) {
+                                const saleItem = sales[saleKey];
+                                const itemDef = await getDefinition('DestinyInventoryItemDefinition', saleItem.itemHash);
+
+                                let costsHtml = '';
+                                for (const cost of saleItem.costs) {
+                                    const costDef = await getDefinition('DestinyInventoryItemDefinition', cost.itemHash);
+                                    costsHtml += `<img src="https://www.bungie.net${costDef.displayProperties.icon}" title="${costDef.displayProperties.name}" style="width: 16px; height: 16px;"> ${cost.quantity}`;
+                                }
+
+                                itemsHtml += `
+                                    <div class="vendor-item">
+                                        <img src="https://www.bungie.net${itemDef.displayProperties.icon}" class="rarity-border-${itemDef.inventory.tierType}" style="border-width: 2px; border-style: solid;">
+                                        <div>
+                                            <strong>${itemDef.displayProperties.name}</strong>
+                                            <div class="vendor-item-costs">${costsHtml}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            vendorsList.innerHTML += `
+                                <div class="vendor-card">
+                                    <div class="vendor-header">
+                                        <img src="https://www.bungie.net${vendorDef.displayProperties.icon}">
+                                        <h3>${vendorDef.displayProperties.name}</h3>
+                                    </div>
+                                    <div class="vendor-inventory">${itemsHtml}</div>
+                                </div>`;
+                        }
+                    }
+                }
+            } catch (error) {
+                vendorsList.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement des marchands: ${error.message}</p>`;
+            }
         }
 
         async function createCharacterCard(characterId, data, itemInstances) {
