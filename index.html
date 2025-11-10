@@ -1420,7 +1420,7 @@
             }
         }
 
-        async function displayClanInfo(profileData) {
+        async function displayClanInfo(profileData) { // profileData is needed for personal contribution
             const { membershipType, membershipId } = currentUserInfo;
 
             try {
@@ -1434,9 +1434,10 @@
                 }
 
                 const clan = groupsData.Response.results[0].group;
-                clanContainer.classList.remove('hidden');
-
                 const groupId = clan.groupId;
+
+                // Ensure clan container is visible if a clan is found
+                clanContainer.classList.remove('hidden');
 
                 let headerHtml = `
                     <div class="clan-header">
@@ -1469,14 +1470,14 @@
                 `;
                 progressionHtml += '</div>';
 
+                let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                 try {
                     const weeklyRewardRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const weeklyRewardData = await weeklyRewardRes.json();
-                    let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                     if (weeklyRewardData.ErrorCode === 1) {
                         for (const reward of weeklyRewardData.Response.rewards) {
                             for (const entry of reward.entries) {
-                                const totalProgress = entry.progressTotal || 1;
+                                const totalProgress = entry.progressTotal || 1; // Avoid division by zero
                                 const currentProgress = entry.progress || 0;
                                 const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                                 rewardsHtml += `
@@ -1490,19 +1491,18 @@
                             }
                         }
                     } else {
-                        rewardsHtml += `<p style="color: #ff7b7b;">Erreur: ${weeklyRewardData.Message}</p>`;
+                        rewardsHtml += `<p style="color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires: ${weeklyRewardData.Message}</p>`;
                     }
-                    rewardsHtml += '</div>';
-                    clanInfoDiv.innerHTML += rewardsHtml;
                 } catch (rewardError) {
                     console.error("Erreur lors du chargement des récompenses hebdomadaires:", rewardError);
-                    clanInfoDiv.innerHTML += `<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4><p style="color: #ff7b7b;">Erreur de chargement.</p></div>`;
+                    rewardsHtml += `<p style="color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires.</p>`;
                 }
+                rewardsHtml += '</div>';
 
+                let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
                 try {
                     const membersRes = await fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const membersData = await membersRes.json();
-                    let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
                     if (membersData.ErrorCode === 1) {
                         const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
                         membersData.Response.results.sort((a, b) => a.memberType - b.memberType).forEach(member => {
@@ -1518,12 +1518,13 @@
                     } else {
                         membersHtml += `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td></tr>`;
                     }
-                    membersHtml += '</table></div>';
-                    clanInfoDiv.innerHTML = headerHtml + progressionHtml + membersHtml;
                 } catch (memberError) {
                     console.error("Erreur lors du chargement des membres:", memberError);
-                    clanInfoDiv.innerHTML += `<div class="member-list"><h4>Membres</h4><p style="color: #ff7b7b;">Erreur de chargement.</p></div>`;
+                    membersHtml += `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td></tr>`;
                 }
+                membersHtml += '</table></div>';
+
+                clanInfoDiv.innerHTML = headerHtml + progressionHtml + rewardsHtml + membersHtml;
 
             } catch (error) {
                 console.error("Erreur lors du chargement des informations du clan:", error);
