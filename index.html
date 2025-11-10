@@ -417,8 +417,12 @@
             border: none;
             padding: 10px 20px;
             cursor: pointer;
-            width: 100%;
-            margin-bottom: 10px;
+            transition: background-color 0.3s, transform 0.2s;
+            clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+        }
+        .action-button:hover {
+            background-color: #75b0f8;
+            transform: translateY(-2px);
         }
 
         .quests-toggle-button {
@@ -533,6 +537,9 @@
             gap: 5px;
             align-items: center;
         }
+        .vendor-item-cost {
+            display: flex; align-items: center; gap: 3px; white-space: nowrap;
+        }
 
         .loadout-save-section {
             display: flex;
@@ -540,8 +547,11 @@
             align-items: center;
             justify-content: center;
             margin-top: 15px;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.2);
+            border-top: 1px solid var(--border-color);
         }
-        .loadout-save-section input { padding: 8px; }
+        .loadout-save-section input { flex-grow: 1; }
 
         #loadoutsList {
             text-align: left;
@@ -557,7 +567,6 @@
         }
         .loadout-item-name { font-weight: bold; }
         .loadout-actions button {
-            margin-left: 10px;
             padding: 5px 10px;
         }
         .loadout-item-icons {
@@ -595,6 +604,7 @@
         #selectedLoadoutItems {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
             padding: 15px;
             margin-bottom: 15px;
             background: rgba(0,0,0,0.3);
@@ -612,7 +622,25 @@
         #loadoutBuilderActions {
             margin-top: 20px;
             display: flex; gap: 10px;
+            align-items: center;
         }
+        
+        input[type="text"] {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            padding: 10px 15px;
+            border-radius: 3px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 5px var(--accent-color);
+        }
+        #playerSearch input[type="text"] { width: 50%; margin-right: 10px; }
+        #importLoadoutInput, #newLoadoutName, .loadout-save-section input[type="text"] { flex-grow: 1; }
 
     </style>
 </head>
@@ -655,7 +683,7 @@
             <h2>Communauté</h2>
             <p>Rechercher un Gardien pour voir ses personnages et son équipement.</p>
             <div id="playerSearch">
-                <input type="text" id="searchPlayerInput" placeholder="Bungie Name" style="padding: 8px; width: 50%; margin-right: 10px;">
+                <input type="text" id="searchPlayerInput" placeholder="Bungie Name">
                 <button id="searchPlayerBtn" class="action-button" style="width: auto;">Rechercher</button>
             </div>
             <div id="searchHistory" style="margin-top: 20px; text-align: left;">
@@ -690,7 +718,7 @@
             <h2>Équipements (Loadouts)</h2>
             <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
                 <button id="createLoadoutBtn" class="action-button" style="width: auto;">Créer un équipement</button>
-                <input type="text" id="importLoadoutInput" placeholder="Coller un code d'équipement" style="padding: 8px; flex-grow: 1;">
+                <input type="text" id="importLoadoutInput" placeholder="Coller un code d'équipement">
                 <button id="importLoadoutBtn" class="action-button" style="width: auto;">Importer</button>
             </div>
             <div id="loadoutsList"></div>
@@ -714,7 +742,7 @@
                 <div id="selectedLoadoutItems"></div>
                 <div id="loadoutBuilderItemsContainer"></div>
                 <div id="loadoutBuilderActions">
-                    <input type="text" id="newLoadoutName" placeholder="Nom de l'équipement" style="padding: 8px; flex-grow: 1;">
+                    <input type="text" id="newLoadoutName" placeholder="Nom de l'équipement">
                     <button id="saveNewLoadoutBtn" class="action-button" style="width: auto;">Sauvegarder</button>
                 </div>
             </div>
@@ -756,9 +784,7 @@
         const saveNewLoadoutBtn = document.getElementById('saveNewLoadoutBtn');
         const selectedLoadoutItemsDiv = document.getElementById('selectedLoadoutItems');
         const loadoutBuilderItemsContainer = document.getElementById('loadoutBuilderItemsContainer');
-
         const playerProfileModalCloseBtn = document.getElementById('playerProfileModalCloseBtn');
-
         const errorDisplayDiv = document.createElement('div');
         const refreshBtn = document.getElementById('refreshBtn');
         const perkDefinitionsCache = {};
@@ -1281,6 +1307,7 @@
                                     costsHtml += `<img src="https://www.bungie.net${costDef.displayProperties.icon}" title="${costDef.displayProperties.name}" style="width: 16px; height: 16px;"> ${cost.quantity}`;
                                 }
 
+                            costsHtml = `<span class="vendor-item-cost">${costsHtml}</span>`;
                                 itemsHtml += `
                                     <div class="vendor-item">
                                         <img src="https://www.bungie.net${itemDef.displayProperties.icon}" class="rarity-border-${itemDef.inventory.tierType}" style="border-width: 2px; border-style: solid;">
@@ -1403,7 +1430,7 @@
             if (def && def.displayProperties.icon) {
                 img.src = `https://www.bungie.net${def.displayProperties.icon}`;
             } else {
-                img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; // Transparent 1x1 GIF
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
             }
             let quantityHtml = '';
             if (item.quantity > 1) {
@@ -1617,7 +1644,25 @@
                     const index = e.target.dataset.index;
                     const loadout = loadouts[index];
                     const shareCode = btoa(JSON.stringify(loadout.itemHashes));
-                    navigator.clipboard.writeText(shareCode).then(() => alert('Code de partage copié !'));
+                    navigator.clipboard.writeText(shareCode).then(() => {
+                        const originalText = button.textContent;
+                        const originalBg = button.style.backgroundColor;
+                        button.textContent = 'Copié !';
+                        button.style.backgroundColor = '#27ae60';
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                            button.style.backgroundColor = originalBg;
+                        }, 1500);
+                    }).catch(err => {
+                        console.error('Erreur de copie dans le presse-papiers:', err);
+                        const tempInput = document.createElement('textarea');
+                        tempInput.value = shareCode;
+                        document.body.appendChild(tempInput);
+                        tempInput.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tempInput);
+                        alert('Impossible de copier automatiquement. Le code a été sélectionné, appuyez sur Ctrl+C (ou Cmd+C) pour copier.');
+                    });
                 });
             });
 
