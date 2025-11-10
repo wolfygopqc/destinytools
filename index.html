@@ -16,10 +16,6 @@
             --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             --hover-color: #fff;
         }
-        canvas {
-            outline: none;
-            background-color: transparent;
-        }
 
         body {
             background-image: url('https://www.bungie.net/img/destiny_content/pgcr/background_decal.png');
@@ -67,34 +63,6 @@
         }
         #logoutBtn:hover {
             background-color: var(--text-color);
-            color: var(--bg-color);
-        }
-        #groupBtn {
-            background: none;
-            border: 1px solid var(--accent-color);
-            color: var(--accent-color);
-            padding: 8px 16px;
-            cursor: pointer;
-            transition: background-color 0.3s, color 0.3s;
-            margin-top: 10px;
-            margin-left: 10px;
-        }
-        #groupBtn:hover {
-            background-color: var(--accent-color);
-            color: var(--bg-color);
-        }
-        #refreshBtn {
-            background: none;
-            border: 1px solid var(--accent-color);
-            color: var(--accent-color);
-            padding: 8px 16px;
-            cursor: pointer;
-            transition: background-color 0.3s, color 0.3s;
-            margin-top: 10px;
-            margin-right: 10px;
-        }
-        #refreshBtn:hover {
-            background-color: var(--accent-color);
             color: var(--bg-color);
         }
 
@@ -158,7 +126,7 @@
         }
         #characters {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(650px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
             gap: 20px;
         }
         .character-card {
@@ -169,8 +137,6 @@
             clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
             text-align: left;
             transition: background-color 0.3s;
-            display: flex;
-            gap: 20px;
         }
         .character-info {
             flex-grow: 1;
@@ -212,8 +178,7 @@
         
         .equipment-grid {
             display: grid;
-            grid-template-columns: repeat(8, 64px);
-            justify-content: start;
+            grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 10px;
             margin-top: 20px;
         }
@@ -297,22 +262,6 @@
         .item-detail-body p {
             margin: 5px 0 15px 0;
         }
-        #itemActions {
-            margin-top: 20px;
-        }
-        .action-button {
-            background-color: var(--accent-color);
-            color: var(--text-color);
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        .action-button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-        }
         .perks-section {
             margin-top: 20px;
             border-top: 1px solid var(--border-color);
@@ -377,32 +326,6 @@
         }
         .stat-value-text { width: 30px; text-align: left; font-weight: bold; }
 
-        .inventory-section {
-            margin-bottom: 20px;
-        }
-        .equipped-items {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr) 0.5fr repeat(5, 1fr);
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 30px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .equipped-items .item-slot {
-            width: 80px;
-            height: 80px;
-        }
-        .equipped-items .item-power {
-            font-size: 1em;
-        }
-        .inventory-grid .item-slot {
-            width: 64px;
-            height: 64px;
-        }
-        .inventory-grid .item-power {
-            font-size: 0.8em;
-        }
         .item-power {
             position: absolute;
             bottom: 2px;
@@ -474,9 +397,7 @@
     <header>
         <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
-        <button id="refreshBtn" class="hidden">Rafraîchir</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
-        <button id="groupBtn" class="hidden">Gérer le Groupe</button>
     </header>
 
     <main>
@@ -499,23 +420,9 @@
             </div>
         </div>
 
-        <div id="vendorDisplayContainer" class="content-container hidden">
-            <h2>Marchands de la Tour</h2>
-            <div id="vendorGrid"></div>
-        </div>
-
         <div id="vaultDisplayContainer" class="content-container hidden">
             <h2>Votre Coffre</h2>
             <div id="vaultGrid" class="inventory-grid"></div>
-        </div>
-
-        <div id="inventoryModal" class="modal-overlay">
-            <div class="modal-content">
-                <span id="modalCloseBtn" class="modal-close">&times;</span>
-                <h2 id="inventoryCharacterName">Inventaire</h2>
-                <div id="inventoryContent">
-                </div>
-            </div>
         </div>
 
         <div id="itemDetailModal" class="modal-overlay">
@@ -526,35 +433,6 @@
                     <h3 id="itemDetailName"></h3>
                 </div>
                 <div id="itemDetailBody" class="item-detail-body"></div>
-            </div>
-        </div>
-
-        <div id="groupModal" class="modal-overlay">
-            <div class="modal-content">
-                <span id="groupModalCloseBtn" class="modal-close">&times;</span>
-                <h2 id="groupName">Gestion du Groupe</h2>
-                <div id="groupContent">
-                    <div id="noGroupView">
-                        <p>Vous n'êtes actuellement dans aucun groupe.</p>
-                        <input type="text" id="createGroupName" placeholder="Nom du groupe" style="width: 60%; padding: 8px; margin-right: 10px;">
-                        <button id="createGroupBtn" class="action-button" style="width: auto;">Créer un Groupe</button>
-                    </div>
-                    <div id="inGroupView" class="hidden">
-                        <h3>Membres</h3>
-                        <div id="groupMembers"></div>
-                        <button id="leaveGroupBtn" class="action-button" style="background-color: #c0392b;">Quitter / Dissoudre</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="memberProfileModal" class="modal-overlay">
-            <div class="modal-content" style="max-width: 1400px;">
-                <span id="memberProfileModalCloseBtn" class="modal-close">&times;</span>
-                <h2 id="memberProfileName">Profil du Membre</h2>
-                <div id="memberProfileContent">
-                    <div class="loader"></div>
-                </div>
             </div>
         </div>
     </main>
@@ -571,30 +449,15 @@
         const userInfoDiv = document.getElementById('userInfo');
         const charactersDiv = document.getElementById('characters');
         const logoutBtn = document.getElementById('logoutBtn');
-        const inventoryModal = document.getElementById('inventoryModal');
-        const modalCloseBtn = document.getElementById('modalCloseBtn');
-        const inventoryContentDiv = document.getElementById('inventoryContent');
-        const inventoryCharacterName = document.getElementById('inventoryCharacterName');
         const itemDetailModal = document.getElementById('itemDetailModal');
         const itemDetailCloseBtn = document.getElementById('itemDetailCloseBtn');
         const itemDetailIcon = document.getElementById('itemDetailIcon');
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
-        let currentOpenItem = null;
-        const groupBtn = document.getElementById('groupBtn');
-        const groupModal = document.getElementById('groupModal');
-        const groupModalCloseBtn = document.getElementById('groupModalCloseBtn');
-        const createGroupBtn = document.getElementById('createGroupBtn');
-        const leaveGroupBtn = document.getElementById('leaveGroupBtn');
-        const memberProfileModal = document.getElementById('memberProfileModal');
-        const memberProfileModalCloseBtn = document.getElementById('memberProfileModalCloseBtn');
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
         const vaultGrid = document.getElementById('vaultGrid');
-        const vendorDisplayContainer = document.getElementById('vendorDisplayContainer');
-        const vendorGrid = document.getElementById('vendorGrid');
         const errorDisplayDiv = document.createElement('div');
         const perkDefinitionsCache = {};
-        const refreshBtn = document.getElementById('refreshBtn');
         let currentUserInfo = null;
         let refreshIntervalId = null;
 
@@ -629,64 +492,12 @@
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
             }
-            vaultDisplayContainer.classList.add('hidden');
             localStorage.removeItem('destinySession');
             window.location.reload();
         });
 
-        refreshBtn.addEventListener('click', () => {
-            const session = getSessionFromCache();
-            if (session) {
-                loadingDiv.classList.remove('hidden');
-                profileDataDiv.classList.add('hidden');
-                getProfileDataWithToken(session.accessToken, session.membershipId);
-            }
-        });
-
-        modalCloseBtn.addEventListener('click', () => {
-            inventoryModal.classList.remove('visible');
-        });
-
         itemDetailCloseBtn.addEventListener('click', () => {
             itemDetailModal.classList.remove('visible');
-        });
-
-        groupBtn.addEventListener('click', () => {
-            groupModal.classList.add('visible');
-        });
-
-        groupModalCloseBtn.addEventListener('click', () => {
-            groupModal.classList.remove('visible');
-        });
-
-        memberProfileModalCloseBtn.addEventListener('click', () => {
-            memberProfileModal.classList.remove('visible');
-            document.getElementById('memberProfileContent').innerHTML = '<div class="loader"></div>';
-        });
-
-        createGroupBtn.addEventListener('click', () => {
-            const groupNameInput = document.getElementById('createGroupName');
-            let groupName = groupNameInput.value.trim();
-
-            if (currentUserInfo) {
-                if (!groupName) {
-                    groupName = `Escouade de ${currentUserInfo.bungieGlobalDisplayName}`;
-                }
-
-                const group = {
-                    name: groupName,
-                    owner: currentUserInfo.bungieGlobalDisplayName,
-                    members: [currentUserInfo]
-                };
-                saveGroupToCache(group);
-                updateGroupModal(group);
-                groupNameInput.value = '';
-            }
-        });
-
-        leaveGroupBtn.addEventListener('click', () => {
-            clearGroupFromCache();
-            updateGroupModal(null);
         });
 
         function showContent() {
@@ -695,9 +506,6 @@
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
-            refreshBtn.classList.remove('hidden');
-            groupBtn.classList.remove('hidden');
-            updateGroupModal(getGroupFromCache());
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -769,12 +577,6 @@
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
                 if (!userMembershipsResponse.ok) {
-                    if (userMembershipsResponse.status === 403) {
-                        throw new Error("Clé API invalide ou manquante (Erreur 403). Veuillez vérifier la variable BUNGIE_API_KEY dans votre code.");
-                    }
-                    if (userMembershipsResponse.status >= 500) {
-                        throw new Error("L'API de Bungie rencontre un problème temporaire (Erreur 5xx). Veuillez réessayer dans quelques instants.");
-                    }
                     throw new Error(`Impossible de récupérer les profils de l'utilisateur (Status: ${userMembershipsResponse.status})`);
                 }
 
@@ -791,26 +593,13 @@
                 const destinyProfile = allDestinyProfiles.find(p => p.membershipId === primaryMembershipId) || allDestinyProfiles[0];
 
                 if (!destinyProfile) {
-                    throw new Error("Ce compte Bungie.net n'a pas de profil Destiny 2 associé. Veuillez lancer le jeu au moins une fois.");
+                    throw new Error("Ce compte Bungie.net n'a pas de profil Destiny 2 associé.");
                 }
 
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [
-                    100,
-                    102,
-                    200,
-                    201,
-                    202,
-                    203,
-                    205,
-                    300,
-                    302,
-                    304,
-                    305,
-                    1200
-                ].join(',');
+                const components = [100, 102, 200, 205, 300, 304, 305].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
@@ -821,7 +610,7 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-                displayData(profileData.Response, destinyMembershipId, membershipType);
+                displayData(profileData.Response);
 
             } catch (error) {
                 handleApiError(error);
@@ -844,7 +633,7 @@
             return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
-        function displayData(data, destinyMembershipId, membershipType) {
+        function displayData(data) {
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
@@ -855,6 +644,7 @@
             charactersDiv.innerHTML = '';
 
             const characterIds = data.profile.data.characterIds;
+            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             
             if (data.profileInventory?.data?.items) {
                 vaultGrid.innerHTML = '';
@@ -881,7 +671,7 @@
             }
 
             for (const characterId of characterIds) {
-                const characterCard = createCharacterCard(characterId, data, destinyMembershipId, membershipType);
+                const characterCard = createCharacterCard(characterId, data, itemInstances);
                 if (characterCard) {
                     charactersDiv.appendChild(characterCard);
                 }
@@ -895,16 +685,14 @@
                 if (session) {
                     if (Date.now() > session.accessTokenExpiresAt) { 
                         refreshToken(session.refreshToken);
-                    } else {
-                        getProfileDataWithToken(session.accessToken, session.membershipId);
                     }
                 } else {
                     clearInterval(refreshIntervalId);
                 }
-            }, 30000);
+            }, 300000);
         }
 
-        function createCharacterCard(characterId, data, destinyMembershipId, membershipType) {
+        function createCharacterCard(characterId, data, itemInstances) {
             const char = data.characters.data[characterId];
             if (!char) return null;
 
@@ -931,7 +719,6 @@
             const equipmentGrid = document.createElement('div');
             equipmentGrid.className = 'equipment-grid';
             const equipmentData = data.characterEquipment.data[characterId].items;
-            const itemInstances = data.itemComponents?.instances?.data || {};
             const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
             equipmentData
                 .filter(item => relevantSlots.includes(item.bucketHash))
@@ -960,62 +747,7 @@
             return card;
         }
 
-        function showInventoryModal(characterId, data) {
-            const itemInstances = data.itemComponents?.instances?.data || {};
-            let inventory;
-            let title;
-
-            const character = data.characters.data[characterId];
-            inventory = data.characterInventories?.data?.[characterId]?.items || [];
-            const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-            title = `Inventaire - ${classMap[character.classType]}`;
-
-            inventoryCharacterName.textContent = title;
-            inventoryContentDiv.innerHTML = '';
-
-            const weaponBuckets = [1498876634, 2465295065, 953998645];
-            const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
-
-            const createSection = (title, items, isEquippedView = false) => {
-                if (items.length === 0) return;
-
-                const section = document.createElement('div');
-                section.className = isEquippedView ? 'equipped-items' : 'inventory-section';
-
-                const sectionTitle = document.createElement('h3');
-                sectionTitle.textContent = title;
-                if (!isEquippedView) section.appendChild(sectionTitle);
-
-                const grid = document.createElement('div');
-                grid.className = isEquippedView ? 'equipped-items' : 'inventory-grid';
-
-                items.forEach(item => {
-                    const itemElement = createItemElement(item, itemInstances, data, characterId);
-                    grid.appendChild(itemElement);
-                });
-
-                if (isEquippedView) {
-                    inventoryContentDiv.appendChild(grid);
-                } else {
-                    section.appendChild(grid);
-                    inventoryContentDiv.appendChild(section);
-                }
-            };
-
-            const equippedItems = inventory.filter(item => item.isEquipped);
-            createSection('Équipé', equippedItems, true);
-
-            const inventoryItems = inventory.filter(item => !item.isEquipped);
-            const inventoryWeapons = inventoryItems.filter(item => weaponBuckets.includes(item.bucketHash));
-            const inventoryArmor = inventoryItems.filter(item => armorBuckets.includes(item.bucketHash));
-
-            createSection('Armes en inventaire', inventoryWeapons);
-            createSection('Armures en inventaire', inventoryArmor);
-
-            inventoryModal.classList.add('visible');
-        }
-
-        function createItemElement(item, itemInstances, data, characterId) {
+        function createItemElement(item, itemInstances, data, ownerId) {
             const instance = itemInstances[item.itemInstanceId];
             const power = instance?.primaryStat?.value || '';            
             
@@ -1028,12 +760,14 @@
             });
             itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
             itemElement.prepend(img);
-            itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
+            itemElement.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                showItemDetailModal(item, data, ownerId); 
+            });
             return itemElement;
         }
 
-        async function showItemDetailModal(item, data, characterId) {
-            currentOpenItem = { item, characterId, allData: data };
+        async function showItemDetailModal(item, data, ownerId) {
             try {
                 const itemDef = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
                 if (!itemDef) throw new Error("Définition de l'objet introuvable.");
@@ -1049,13 +783,15 @@
                     <p class="flavor-text">${itemDef.flavorText || ''}</p>
                 `;
                 
-                const weaponStats = data.itemComponents?.stats?.data?.[item.itemInstanceId]?.stats;
-                if (weaponStats) {
+                const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
+                const itemStats = data.itemComponents?.stats?.data?.[item.itemInstanceId]?.stats;
+
+                if (itemStats) {
                     bodyHtml += '<div class="weapon-stats-section"><h4>Statistiques</h4>';
-                    const statDefs = await Promise.all(Object.keys(weaponStats).map(hash => getDefinition('DestinyStatDefinition', hash)));
+                    const statDefs = await Promise.all(Object.keys(itemStats).map(hash => getDefinition('DestinyStatDefinition', hash)));
 
                     for (const statDef of statDefs.filter(def => def && def.displayProperties.name)) {
-                        const statValue = weaponStats[statDef.hash].value;
+                        const statValue = itemStats[statDef.hash].value;
                         if (statDef.displayProperties.name && statValue > 0) {
                             bodyHtml += `
                                 <div class="stat-bar-container">
@@ -1070,9 +806,6 @@
                     }
                     bodyHtml += '</div>';
                 }
-
-                const itemSockets = data.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets || 
-                                  data.profileInventory?.data?.itemComponents?.sockets?.data?.[item.itemInstanceId]?.sockets;
 
                 if (itemSockets) {
                     bodyHtml += '<div class="perks-section"><h4>Attributs</h4>';
@@ -1130,211 +863,6 @@
             contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
 
-        async function getVendorData(accessToken, membershipType, destinyMembershipId, characterId) {
-            try {
-                const vendorResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/Character/${characterId}/Vendors/?components=402`, {
-                    headers: {
-                        'X-API-Key': BUNGIE_API_KEY,
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
-                if (!vendorResponse.ok) throw new Error(`Impossible de récupérer les données des marchands (Status: ${vendorResponse.status})`);
-
-                const vendorData = await vendorResponse.json();
-                if (vendorData.ErrorCode !== 1) throw new Error(vendorData.Message);
-
-                displayVendors(vendorData.Response);
-
-            } catch (error) {
-                handleApiError(error);
-            }
-        }
-
-        function displayVendors(data) {
-            vendorGrid.innerHTML = '';
-            vendorDisplayContainer.classList.remove('hidden');
-
-            const vendorSales = data.sales.data;
-            if (!vendorSales) return;
-
-            const relevantVendors = {
-                '2190858386': 'Xûr',
-                '672118013': 'Banshee-44',
-                '2762206170': 'Ada-1'
-            };
-
-        }
-
-        function saveGroupToCache(group) {
-            localStorage.setItem('destinyGroup', JSON.stringify(group));
-        }
-
-        function getGroupFromCache() {
-            const groupStr = localStorage.getItem('destinyGroup');
-            return groupStr ? JSON.parse(groupStr) : null;
-        }
-
-        function clearGroupFromCache() {
-            localStorage.removeItem('destinyGroup');
-        }
-
-        function updateGroupModal(group) {
-            const noGroupView = document.getElementById('noGroupView');
-            const inGroupView = document.getElementById('inGroupView');
-            const groupNameTitle = document.getElementById('groupName');
-            const groupMembersDiv = document.getElementById('groupMembers');
-
-            if (group) {
-                noGroupView.classList.add('hidden');
-                inGroupView.classList.remove('hidden');
-                groupNameTitle.textContent = group.name;
-                groupMembersDiv.innerHTML = '';
-                group.members.forEach(member => {
-                    const memberDiv = createGroupMemberElement(member, group);
-                    groupMembersDiv.appendChild(memberDiv);
-                });
-
-                const isOwner = currentUserInfo.bungieGlobalDisplayName === group.owner;
-                if (isOwner) {
-                    const settingsDiv = document.createElement('div');
-                    settingsDiv.innerHTML = `
-                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                            <h4>Paramètres du groupe</h4>
-                            <input type="text" id="renameGroupName" placeholder="Nouveau nom" value="${group.name}" style="padding: 8px; margin-right: 10px;">
-                            <button id="renameGroupBtn" class="action-button" style="width: auto;">Renommer</button>
-                        </div>
-                        <div style="margin-top: 20px;">
-                            <input type="text" id="inviteMemberName" placeholder="Bungie Name#1234" style="padding: 8px; margin-right: 10px;">
-                            <button id="inviteMemberBtn" class="action-button" style="width: auto;">Ajouter un membre</button>
-                        </div>
-                    `;
-                    groupMembersDiv.appendChild(settingsDiv);
-
-                    document.getElementById('renameGroupBtn').addEventListener('click', () => {
-                        const newName = document.getElementById('renameGroupName').value.trim();
-                        if (newName) {
-                            group.name = newName;
-                            saveGroupToCache(group);
-                            updateGroupModal(group);
-                        }
-                    });
-
-                    document.getElementById('inviteMemberBtn').addEventListener('click', async () => {
-                        const inviteInput = document.getElementById('inviteMemberName');
-                        const bungieNameFull = inviteInput.value.trim();
-                        const parts = bungieNameFull.split('#');
-                        if (parts.length !== 2) {
-                            alert("Veuillez entrer un nom au format 'Nom#1234'.");
-                            return;
-                        }
-                        const displayName = parts[0];
-                        const displayNameCode = parts[1];
-
-                        try {
-                            const session = getSessionFromCache();
-                            const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/SearchDestinyPlayerByBungieName/-1/`, {
-                                method: 'POST',
-                                headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ displayName, displayNameCode })
-                            });
-                            const searchData = await searchResponse.json();
-                            if (searchData.ErrorCode === 1 && searchData.Response.length > 0) {
-                                const newMember = searchData.Response[0];
-                                if (!group.members.some(m => m.membershipId === newMember.membershipId)) {
-                                    group.members.push(newMember);
-                                    saveGroupToCache(group);
-                                    updateGroupModal(group);
-                                    inviteInput.value = '';
-                                } else {
-                                    alert("Ce membre est déjà dans le groupe.");
-                                }
-                            } else {
-                                alert("Joueur introuvable.");
-                            }
-                        } catch (error) {
-                            console.error("Erreur lors de la recherche du joueur:", error);
-                            alert("Une erreur est survenue lors de la recherche.");
-                        }
-                    });
-                }
-
-            } else {
-                noGroupView.classList.remove('hidden');
-                inGroupView.classList.add('hidden');
-                groupNameTitle.textContent = 'Gestion du Groupe';
-            }
-        }
-
-        function createGroupMemberElement(member, group) {
-            const memberDiv = document.createElement('div');
-            memberDiv.style.display = 'flex';
-            memberDiv.style.justifyContent = 'space-between';
-            memberDiv.style.alignItems = 'center';
-            memberDiv.style.padding = '8px';
-            memberDiv.style.borderBottom = '1px solid var(--border-color)';
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = `${member.bungieGlobalDisplayName}#${member.bungieGlobalDisplayNameCode}`;
-            memberDiv.appendChild(nameSpan);
-
-            const buttonsDiv = document.createElement('div');
-            const viewProfileBtn = document.createElement('button');
-            viewProfileBtn.textContent = 'Voir Profil';
-            viewProfileBtn.className = 'action-button';
-            viewProfileBtn.style = 'width:auto; margin-right: 5px; background-color: #3498db;';
-            viewProfileBtn.onclick = () => showMemberProfile(member.membershipType, member.membershipId);
-            buttonsDiv.appendChild(viewProfileBtn);
-
-            if (currentUserInfo.bungieGlobalDisplayName === group.owner && member.bungieGlobalDisplayName !== group.owner) {
-                const removeBtn = document.createElement('button');
-                removeBtn.textContent = 'Retirer';
-                removeBtn.className = 'action-button';
-                removeBtn.style = 'width:auto; background-color: #e74c3c;';
-                removeBtn.onclick = () => {
-                    group.members = group.members.filter(m => m.membershipId !== member.membershipId);
-                    saveGroupToCache(group);
-                    updateGroupModal(group);
-                };
-                buttonsDiv.appendChild(removeBtn);
-            }
-            memberDiv.appendChild(buttonsDiv);
-            return memberDiv;
-        }
-
-        async function showMemberProfile(membershipType, membershipId) {
-            memberProfileModal.classList.add('visible');
-            const memberProfileContent = document.getElementById('memberProfileContent');
-            const memberProfileName = document.getElementById('memberProfileName');
-            
-            try {
-                const session = getSessionFromCache();
-                const components = [100, 200, 201, 202, 203, 205, 300, 302, 304, 305, 1200].join(',');
-                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/?components=${components}`, {
-                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
-                });
-                const profileData = await profileResponse.json();
-                if (profileData.ErrorCode !== 1) throw new Error(profileData.Message);
-
-                const response = profileData.Response;
-                memberProfileName.textContent = `Profil de ${response.profile.data.userInfo.bungieGlobalDisplayName}`;
-                memberProfileContent.innerHTML = '';
-
-                for (const characterId of response.profile.data.characterIds) {
-                    const characterCard = createCharacterCard(characterId, response, membershipId, membershipType);
-                    if (characterCard) {
-                        memberProfileContent.appendChild(characterCard);
-                    }
-                }
-
-            } catch (error) {
-                memberProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du profil du membre : ${error.message}</p>`;
-            }
-        }
-
-    </script>
-</body>
- 
-</html>
     </script>
 </body>
  
