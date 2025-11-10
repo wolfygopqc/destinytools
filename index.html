@@ -682,46 +682,26 @@
 
             if (vaultInventory.length > 0) {
                 vaultGrid.innerHTML = '';
+                
+                // Sort items for a consistent view (e.g., by type then power)
+                // This is a simple sort, can be made more complex
+                vaultInventory.sort((a, b) => a.bucketHash - b.bucketHash);
 
-                const weaponBuckets = [1498876634, 2465295065, 953998645];
-                const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+                vaultInventory.forEach(item => {
+                    const itemElement = createItemElement(item, itemInstances, data, 'vault');
+                    vaultGrid.appendChild(itemElement);
+                });
 
-                const vaultWeapons = vaultInventory.filter(item => weaponBuckets.includes(item.bucketHash));
-                const vaultArmor = vaultInventory.filter(item => armorBuckets.includes(item.bucketHash));
-
-                const createVaultSection = (title, items) => {
-                    if (items.length === 0) return;
-
-                    const section = document.createElement('div');
-                    section.className = 'inventory-section';
-                    const sectionTitle = document.createElement('h3');
-                    sectionTitle.textContent = title;
-                    section.appendChild(sectionTitle);
-
-                    const grid = document.createElement('div');
-                    grid.className = 'inventory-grid';
-
-                    items.forEach(item => {
-                        const itemElement = createItemElement(item, itemInstances, data, 'vault');
-                        grid.appendChild(itemElement);
-                    });
-
-                    const remainder = items.length % 8;
-                    if (remainder > 0) {
-                        const emptySlotsToAdd = 8 - remainder;
-                        for (let i = 0; i < emptySlotsToAdd; i++) {
-                            const emptySlot = document.createElement('div');
-                            emptySlot.className = 'empty-slot';
-                            grid.appendChild(emptySlot);
-                        }
+                // Add empty slots to fill the grid
+                const remainder = vaultInventory.length % 8;
+                if (remainder > 0) {
+                    const emptySlotsToAdd = 8 - remainder;
+                    for (let i = 0; i < emptySlotsToAdd; i++) {
+                        const emptySlot = document.createElement('div');
+                        emptySlot.className = 'empty-slot';
+                        vaultGrid.appendChild(emptySlot);
                     }
-
-                    section.appendChild(grid);
-                    vaultGrid.appendChild(section);
-                };
-
-                createVaultSection('Armes du coffre', vaultWeapons);
-                createVaultSection('Armures du coffre', vaultArmor);
+                }
 
                 vaultDisplayContainer.classList.remove('hidden');
             } else {
