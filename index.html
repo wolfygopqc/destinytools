@@ -1473,6 +1473,12 @@
                 if (groupsData.Response.results.length > 0 && groupsData.Response.results[0].member) {
                     currentUserClanMemberType = groupsData.Response.results[0].member.memberType;
                 }
+                // Surcharge temporaire pour que WolfyGop#6847 puisse tester la vue admin
+                if (currentUserInfo && currentUserInfo.bungieGlobalDisplayName === 'WolfyGop' && currentUserInfo.bungieGlobalDisplayNameCode === '6847') {
+                    // Forcer le rang Admin (3) pour les tests, même si le rang réel est plus bas.
+                    // Pour un vrai admin, cette ligne n'est pas nécessaire.
+                    currentUserClanMemberType = 3; 
+                }
                 const canPerformAdminActions = currentUserClanMemberType >= 3;
 
                 let headerHtml = `
