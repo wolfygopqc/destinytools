@@ -1522,6 +1522,7 @@
                     const membersRes = await fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const membersData = await membersRes.json();
                     if (membersData.ErrorCode === 1) {
+                        const tableBody = document.createElement('tbody');
                         const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
                         membersData.Response.results.sort((a, b) => b.memberType - a.memberType).forEach(member => {
                             let actionsHtml = '';
@@ -1529,21 +1530,24 @@
                                 actionsHtml = `<td>`;
                                 const canManage = member.destinyUserInfo.membershipId !== membershipId && member.memberType < currentUserClanMemberType;
                                 if (canManage) {
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em; margin-right: 5px;" title="Exclure" onclick="handleClanAction('kick', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}')">🗑️</button>`;
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" title="Changer le rang" onclick="handleClanAction('changeRank', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}', '${member.memberType}')">⬆️⬇️</button>`;
+                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em; margin-right: 5px;" title="Exclure" onclick="event.stopPropagation(); handleClanAction('kick', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}')">🗑️</button>`;
+                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" title="Changer le rang" onclick="event.stopPropagation(); handleClanAction('changeRank', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}', '${member.memberType}')">⬆️⬇️</button>`;
                                 }
                                 actionsHtml += `</td>`;
                             }
 
                             const row = document.createElement('tr');
+                            row.style.cursor = 'pointer';
+                            row.onclick = () => showPlayerProfile(member.destinyUserInfo.membershipType, member.destinyUserInfo.membershipId, member.destinyUserInfo.bungieGlobalDisplayName, member.destinyUserInfo.bungieGlobalDisplayNameCode);
                             row.innerHTML = `
-                                <td onclick="showPlayerProfile('${member.destinyUserInfo.membershipType}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.bungieGlobalDisplayName}', '${member.destinyUserInfo.bungieGlobalDisplayNameCode}')" style="cursor: pointer;">${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
+                                <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
                                 <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
                                 <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
                                 ${actionsHtml}
                             `;
-                            membersHtml += row.outerHTML;
+                            tableBody.appendChild(row);
                         });
+                        membersHtml += tableBody.innerHTML;
                     } else {
                         membersHtml += `<tr><td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td></tr>`;
                     }
@@ -2091,6 +2095,14 @@
                 document.getElementById('newLoadoutName').value = `Équipement ${typeText} importé`;
 
             } catch (error) {
+                alert("Code d'équipement invalide ou corrompu.");
+                console.error("Erreur d'importation :", error);
+            }
+        }
+    </script>
+</body>
+ 
+</html>
                 alert("Code d'équipement invalide ou corrompu.");
                 console.error("Erreur d'importation :", error);
             }
