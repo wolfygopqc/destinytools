@@ -822,11 +822,11 @@
             statsHtml += '</div>';
 
             const equipmentGrid = document.createElement('div');
-            equipmentGrid.className = 'equipment-grid';
-            const equipmentData = data.characterEquipment.data[characterId].items;
+            equipmentGrid.className = 'equipment-grid'; 
+            const equipmentDataForGrid = data.characterEquipment.data[characterId].items;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
-            equipmentData
+            equipmentDataForGrid
                 .filter(item => relevantSlots.includes(item.bucketHash))
                 .sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))
                 .forEach(item => {
@@ -834,9 +834,12 @@
                 });
 
             const equipmentDataForRender = data.characterEquipment.data[characterId].items;
-            const equipmentHashes = equipmentDataForRender.map(e => e.itemHash);
-            const renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${membershipType}/${destinyMembershipId}/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
-
+            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`; // Fallback
+            const renderData = data.characterRenderData?.data?.[characterId];
+            if (renderData && renderData.peerView) {
+                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
+                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${membershipType}/${destinyMembershipId}/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
+            }
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
@@ -1030,4 +1033,13 @@
     </script>
 </body>
  
-</html>
+</html> 
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.add('hidden');
+            errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
+            contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
+        }
+    </script>
+</body>
+ 
+</html> 
