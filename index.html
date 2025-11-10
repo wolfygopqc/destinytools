@@ -1422,10 +1422,8 @@
         async function displayClanInfo(profileData) {
             const { membershipType, membershipId } = currentUserInfo;
 
-            clanInfoDiv.innerHTML = '';
-            clanContainer.classList.add('hidden');
             clanInfoDiv.innerHTML = ''; // Clear previous content
-            // clanContainer.classList.add('hidden'); // showContent already makes it visible, no need to hide it here initially
+            clanContainer.classList.remove('hidden'); // Ensure the container is visible from the start
 
             try {
                 const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
@@ -1433,16 +1431,12 @@
                 });
                 const groupsData = await groupsResponse.json();
                 if (groupsData.ErrorCode !== 1 || groupsData.Response.results.length === 0) {
-                    return;
                     clanInfoDiv.innerHTML = '<p style="text-align: center; color: rgba(240, 240, 240, 0.7);">Vous n\'avez pas de clan.</p>';
-                    clanContainer.classList.remove('hidden'); // Ensure the container is visible to show the message
                     return; 
                 }
 
                 const clan = groupsData.Response.results[0].group;
                 const groupId = clan.groupId;
-
-                clanContainer.classList.remove('hidden');
 
                 let headerHtml = `
                     <div class="clan-header">
@@ -1533,7 +1527,8 @@
                 clanInfoDiv.innerHTML += membersHtml;
             } catch (error) {
                 console.error("Erreur lors du chargement initial des informations du clan:", error);
-                clanContainer.classList.add('hidden');
+                clanInfoDiv.innerHTML = '<p style="text-align: center; color: #ff7b7b;">Erreur lors du chargement des informations du clan.</p>';
+                clanContainer.classList.remove('hidden'); // Ensure it's visible to show the error message
             }
         }
 
