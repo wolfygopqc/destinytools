@@ -459,6 +459,11 @@
         .quest-progress-bar { background-color: var(--accent-color); height: 100%; }
         .quest-progress-text { font-size: 0.8em; color: rgba(255,255,255,0.7); }
 
+        .quest-details {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.6);
+            margin-top: 5px;
+        }
         .history-item {
             cursor: pointer;
             padding: 8px;
@@ -933,23 +938,34 @@
                         if (!questDef || !questDef.displayProperties.name) continue;
 
                         const objectives = data.characterProgressions?.data?.[characterId]?.uninstancedItemObjectives[questItem.itemHash];
-                        let progressHtml = '';
+                        let objectivesHtml = '';
+
                         if (objectives && objectives.length > 0) {
-                            const mainObjective = objectives[0];
-                            const progress = mainObjective.progress || 0;
-                            const total = mainObjective.completionValue;
-                            const percentage = total > 0 ? (progress / total) * 100 : 0;
-                            progressHtml = `
-                                <div class="quest-progress-text">${questDef.objectives.objectiveVerbName || 'Progression'}: ${progress} / ${total}</div>
-                                <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
-                            `;
+                            for (const objective of objectives) {
+                                const objectiveDef = await getDefinition('DestinyObjectiveDefinition', objective.objectiveHash);
+                                if (!objectiveDef) continue;
+
+                                const progress = objective.progress || 0;
+                                const total = objective.completionValue;
+                                const percentage = total > 0 ? (progress / total) * 100 : 0;
+                                
+                                objectivesHtml += `
+                                    <div class="quest-progress-text">${objectiveDef.progressDescription || 'Progression'}: ${progress} / ${total}</div>
+                                    <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
+                                `;
+                            }
+                        }
+
+                        let detailsHtml = '';
+                        if (questDef.displaySource) {
+                            detailsHtml += `<div class="quest-details">📍 ${questDef.displaySource}</div>`;
                         }
 
                         const questElement = document.createElement('div');
                         questElement.className = 'quest-item';
                         questElement.innerHTML = `
                             <img src="https://www.bungie.net${questDef.displayProperties.icon}" />
-                            <div class="quest-info"><strong>${questDef.displayProperties.name}</strong>${progressHtml}</div>
+                            <div class="quest-info"><strong>${questDef.displayProperties.name}</strong>${objectivesHtml}${detailsHtml}</div>
                         `;
                         charQuestsContainer.appendChild(questElement);
                     }
