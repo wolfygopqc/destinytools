@@ -175,15 +175,6 @@
         .character-info {
             flex-grow: 1;
         }
-        .character-render {
-            flex-shrink: 0;
-            width: 150px;
-            height: 320px;
-            border-left: 1px solid var(--border-color);
-            padding-left: 20px;
-            background-size: cover;
-            background-position: center;
-        }
 
         .character-card h3 {
             margin-top: 0;
@@ -218,72 +209,7 @@
             font-size: 1.1em;
             font-weight: bold;
         }
-        .progressions-grid {
-            margin-top: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .progression-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .progression-icon {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-        }
-        .progression-bar-wrapper {
-            flex-grow: 1;
-            background-color: rgba(0,0,0,0.3);
-            height: 12px;
-            position: relative;
-        }
-        .progression-bar {
-            background-color: var(--accent-color);
-            height: 100%;
-        }
-        .progression-text {
-            font-size: 0.8em;
-            white-space: nowrap;
-        }
-
-        .quests-grid {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .quest-item {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-        }
-        .quest-icon {
-            width: 48px;
-            height: 48px;
-            flex-shrink: 0;
-            border: 1px solid var(--border-color);
-        }
-        .quest-info {
-            flex-grow: 1;
-            text-align: left;
-        }
-        .quest-name {
-            font-weight: bold;
-            font-size: 0.9em;
-            margin: 0 0 5px 0;
-        }
-        .quest-objective {
-            font-size: 0.8em;
-            color: rgba(240, 240, 240, 0.8);
-        }
-        .quest-objective .progression-bar-wrapper {
-            height: 8px;
-        }
+        
         .equipment-grid {
             display: grid;
             grid-template-columns: repeat(8, 64px);
@@ -897,8 +823,6 @@
                 const profileData = await profileResponse.json();
                 displayData(profileData.Response, destinyMembershipId, membershipType);
 
-                const firstCharacterId = profileData.Response.profile.data.characterIds[0];
-
             } catch (error) {
                 handleApiError(error);
             }
@@ -1018,36 +942,15 @@
                     equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
 
-            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`;
-            const renderData = data.characterRenderData?.data?.[characterId];
-            if (renderData && renderData.peerView) {
-                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
-                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/Character/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
-            }
-
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
                     <p><strong>Lumière :</strong> ${char.light}</p>
                     <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                     ${statsHtml}
-                    <div class="progressions-grid"></div>
-                    <div class="quests-grid"></div>
                 </div>
-                <div class="character-render" style="background-image: url('${renderImageUrl}')"></div>
             `;
             card.querySelector('.character-info').appendChild(equipmentGrid);
-
-            const progressionsGrid = card.querySelector('.progressions-grid');
-            if (data.characterProgressions?.data?.[characterId]?.progressions) {
-                const progressionsData = data.characterProgressions.data[characterId].progressions;
-                displayProgressions(progressionsGrid, progressionsData);
-            }
-
-            const questsGrid = card.querySelector('.quests-grid');
-            if (data.characterInventories?.data?.[characterId]?.items && data.itemComponents?.objectives?.data) {
-                displayQuestsAndBounties(questsGrid, data.characterInventories.data[characterId].items, data.itemComponents.objectives.data);
-            }
 
             const backgroundUrl = char.emblemBackgroundPath 
                 ? `https://www.bungie.net${char.emblemBackgroundPath}` 
@@ -1057,82 +960,6 @@
             card.style.backgroundPosition = 'center';
 
             return card;
-        }
-
-        async function displayProgressions(container, progressions) {
-            const relevantProgressions = {
-                '2030104769': 'Gambit',
-                '275567042': 'Épreuve',
-                '616312568': 'Avant-garde'
-            };
-
-            for (const hash in progressions) {
-                if (hash in relevantProgressions) {
-                    const prog = progressions[hash];
-                    const def = await getDefinition('DestinyProgressionDefinition', hash);
-                    if (!def) continue;
-
-                    const progressPercent = (prog.progressToNextLevel / prog.nextLevelAt) * 100;
-
-                    const item = document.createElement('div');
-                    item.className = 'progression-item';
-                    item.innerHTML = `
-                        <img src="https://www.bungie.net${def.displayProperties.icon}" class="progression-icon" title="${def.displayProperties.name}">
-                        <div class="progression-bar-wrapper">
-                            <div class="progression-bar" style="width: ${progressPercent}%"></div>
-                        </div>
-                        <span class="progression-text">Rang ${prog.level}</span>
-                    `;
-                    container.appendChild(item);
-                }
-            }
-        }
-
-        async function displayQuestsAndBounties(container, inventoryItems, objectivesData) {
-            const questBucketHashes = [1345459588, 242293158];
-            const quests = inventoryItems.filter(item => questBucketHashes.includes(item.bucketHash));
-
-            if (quests.length > 0) {
-                const title = document.createElement('h4');
-                title.textContent = 'Quêtes et Contrats';
-                title.style.textAlign = 'left';
-                title.style.margin = '0 0 10px 0';
-                container.appendChild(title);
-            }
-
-            for (const item of quests) {
-                const itemDef = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
-                if (!itemDef) continue;
-
-                const objectives = objectivesData[item.itemInstanceId]?.objectives || [];
-                let objectiveHtml = '';
-
-                for (const obj of objectives) {
-                    const objDef = await getDefinition('DestinyObjectiveDefinition', obj.objectiveHash);
-                    if (!objDef || !objDef.displayProperties.name) continue;
-
-                    const progressPercent = (obj.progress / obj.completionValue) * 100;
-                    objectiveHtml += `
-                        <div class="quest-objective">
-                            <span>${objDef.displayProperties.name}: ${obj.progress} / ${obj.completionValue}</span>
-                            <div class="progression-bar-wrapper">
-                                <div class="progression-bar" style="width: ${progressPercent}%"></div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                const questElement = document.createElement('div');
-                questElement.className = 'quest-item';
-                questElement.innerHTML = `
-                    <img src="https://www.bungie.net${itemDef.displayProperties.icon}" class="quest-icon">
-                    <div class="quest-info">
-                        <p class="quest-name">${itemDef.displayProperties.name}</p>
-                        ${objectiveHtml}
-                    </div>
-                `;
-                container.appendChild(questElement);
-            }
         }
 
         function showInventoryModal(characterId, data) {
