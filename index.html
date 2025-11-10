@@ -658,7 +658,6 @@
             width: 100px;
             height: 200px;
             object-fit: contain;
-            object-fit: contain;
             flex-shrink: 0;
         }
         .clan-details h3 {
@@ -1244,7 +1243,7 @@
                 questsContainer.classList.remove('hidden');
                 vendorsContainer.classList.remove('hidden');
                 loadoutsContainer.classList.remove('hidden');
-            clanContainer.classList.remove('hidden');
+                clanContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -1420,9 +1419,8 @@
                 vendorsList.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement des marchands: ${error.message}</p>`;
             }
         }
- // profileData is needed for personal contribution
+
         async function displayClanInfo(profileData) {
-        async function displayClanInfo(profileData) { // profileData is needed for personal contribution
             const { membershipType, membershipId } = currentUserInfo;
 
             try {
@@ -1436,12 +1434,9 @@
                 }
 
                 const clan = groupsData.Response.results[0].group;
-                // Ensud aco;ncontne vibifm =iifound
-                ]lanC);n/ccssLvsi.rbmovl('hildno'nd
                 clanContainer.classList.remove('hidden');
 
-                const membersData = await membersRes.json();
-                const weeklyRewardData = await weeklyRewardRes.json();
+                const groupId = clan.groupId;
 
                 let headerHtml = `
                     <div class="clan-header">
@@ -1470,14 +1465,14 @@
                     </div>
                     <div class="reward-item">
                         <span>Contribution personnelle hebdomadaire : ${personalContribution.toLocaleString('fr-FR')} XP</span>
-                    </div>';
+                    </div>
+                `;
+                progressionHtml += '</div>';
+
                 try {
-                    const weeklyRewardRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key: BUNGIE_API_KEY } });
-                    const weeklyRewardData = await weeklyRewardRes.json()
-                    `;
-                    progressionHtml += '</div>';
-    
-                    let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes  // Avoid division by zerode clan hebdomadaires</h4>';
+                    const weeklyRewardRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
+                    const weeklyRewardData = await weeklyRewardRes.json();
+                    let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                     if (weeklyRewardData.ErrorCode === 1) {
                         for (const reward of weeklyRewardData.Response.rewards) {
                             for (const entry of reward.entries) {
@@ -1489,78 +1484,46 @@
                                         <span>${entry.rewardEntryLabel || 'Récompense inconnue'}</span>
                                         <div class="reward-progress">
                                             <div class="reward-progress-bar" style="width: ${percentage.toFixed(0)}%;">${percentage.toFixed(0)}%</div>
-                    try {
-                      else {   const weeklyRewardRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
-                            const wee= `<p stylek"color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires: ${weeklyRewardData.Message}</p>`;
-                l   }
-                } catch (rewardError) {
-                    console.error("Erreur lors du chargement des récompenses hebdomadaires:", rewardError);
-                    rewardsHtml += `<p style="color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires.</p>`;
-                }
-                rewardsHtml += yRewardData = await weeklyRewardRes.json();
-                    if (weeklyRewardData.ErrorCode === 1) {
-                        for (const reward of weeklyRewardData.Response.rewards) {';
-                try {
-                    const membersRes = await fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key: BUNGIE_API_KEY } });
-                    const membersData = await membersRes.json()
-                                for (const entry of reward.entries) {
-                                const totalProgress = entry.progressTotal || 1; // Avoid division by zero
-                                const currentProgress = entry.progress || 0;
-                                const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
-                                rewardsHtml += `
-                                    <div class="reward-item">
-                                        <span>${entry.rewardEntryLabel || 'Récompense inconnue'}</span>
-                                        <div class="reward-progress">
-                                            <div class="reward-progress-bar" style="width: ${percentage.toFixed(0)}%;">${percentage.toFixed(0)}%</div>
                                         </div>
                                     </div>
-                                </div>
-                      else {           `;
-                                       `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td></tr>`;
-                    }
-                } catch (memberError) {
-                    console.error("Erreur lors du chargement des membres:", memberError);
-                    membersHtml += `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td></tr>`;
-                }
-                membersHtml +=  `;
+                                `;
                             }
                         }
-                    } else {                        rewardsHtml += `<p style="color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires: ${weeklyRewardData.Message}</p>`;
+                    } else {
+                        rewardsHtml += `<p style="color: #ff7b7b;">Erreur: ${weeklyRewardData.Message}</p>`;
                     }
+                    rewardsHtml += '</div>';
+                    clanInfoDiv.innerHTML += rewardsHtml;
                 } catch (rewardError) {
                     console.error("Erreur lors du chargement des récompenses hebdomadaires:", rewardError);
-                    rewardsHtml += `<p style="color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires.</p>`;
+                    clanInfoDiv.innerHTML += `<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4><p style="color: #ff7b7b;">Erreur de chargement.</p></div>`;
                 }
-                rewardsHtml += '</div>';
 
-                let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
-                if (membersData.ErrorCode === 1) {
                 try {
                     const membersRes = await fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const membersData = await membersRes.json();
+                    let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
                     if (membersData.ErrorCode === 1) {
-                    const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
-                    membersData.Response.results.sort((a, b) => a.memberType - b.memberType).forEach(member => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
-                            <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
-                            <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
-                        `;
-                        tr.onclick = () => showPlayerProfile(member.destinyUserInfo.membershipType, member.destinyUserInfo.membershipId, member.destinyUserInfo.bungieGlobalDisplayName, member.destinyUserInfo.bungieGlobalDisplayNameCode);
-                        membersHtml += tr.outerHTML;
-                    });
+                        const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
+                        membersData.Response.results.sort((a, b) => a.memberType - b.memberType).forEach(member => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
+                                <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
+                                <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
+                            `;
+                            tr.onclick = () => showPlayerProfile(member.destinyUserInfo.membershipType, member.destinyUserInfo.membershipId, member.destinyUserInfo.bungieGlobalDisplayName, member.destinyUserInfo.bungieGlobalDisplayNameCode);
+                            membersHtml += tr.outerHTML;
+                        });
                     } else {
                         membersHtml += `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td></tr>`;
                     }
+                    membersHtml += '</table></div>';
+                    clanInfoDiv.innerHTML = headerHtml + progressionHtml + membersHtml;
                 } catch (memberError) {
                     console.error("Erreur lors du chargement des membres:", memberError);
-                    membersHtml += `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td></tr>`;
+                    clanInfoDiv.innerHTML += `<div class="member-list"><h4>Membres</h4><p style="color: #ff7b7b;">Erreur de chargement.</p></div>`;
                 }
-                membersHtml += '</table></div>';
-
-                clanInfoDiv.innerHTML = headerHtml + progressionHtml + rewardsHtml + membersHtml;
-                clanContainer.classList.remove('hidden');
 
             } catch (error) {
                 console.error("Erreur lors du chargement des informations du clan:", error);
