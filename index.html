@@ -1102,8 +1102,8 @@
             questsContainer.classList.remove('hidden');
             vendorsContainer.classList.remove('hidden');
             loadoutsContainer.classList.remove('hidden');
-            clanLoadoutsContainer.classList.remove('hidden'); // Make new clan loadouts visible
-            clanContainer.classList.remove('hidden'); // Ensure clan container is always visible
+            clanLoadoutsContainer.classList.remove('hidden');
+            clanContainer.classList.remove('hidden');
         }
 
 
@@ -1449,11 +1449,11 @@
         }
 
         async function displayClanInfo(profileData) {
-            if (!currentUserInfo) return; // Wait for currentUserInfo to be set
+            if (!currentUserInfo) return;
             const { membershipType, membershipId } = currentUserInfo;
 
-            clanInfoDiv.innerHTML = ''; // Clear previous content
-            clanContainer.classList.remove('hidden'); // Ensure the container is visible from the start
+            clanInfoDiv.innerHTML = '';
+            clanContainer.classList.remove('hidden');
 
             try {
                 const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
@@ -1507,24 +1507,10 @@
                     const weeklyRewardRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const weeklyRewardData = await weeklyRewardRes.json();
                     if (weeklyRewardData.ErrorCode === 1) {
-                        // The response is a single milestone object, its 'rewards' property is a dictionary of categories.
                         for (const category of Object.values(weeklyRewardData.Response.rewards)) {
                             for (const entry of category.entries) {
-                                let rewardName = 'Récompense inconnue';
-                                // If the label isn't provided, fetch the definition for the reward entry.
-                                if (entry.rewardEntryHash) {
-                                    const rewardDef = await getDefinition('DestinyMilestoneDefinition', entry.rewardEntryHash);
-                                    if (rewardDef && rewardDef.displayProperties.name) {
-                                        rewardName = rewardDef.displayProperties.name;
-                                    }
-                                }
-
-                        // The response is a single milestone object, its 'rewards' property is a dictionary of categories.
-                        for (const category of Object.values(weeklyRewardData.Response.rewards)) {
-                            for (const entry of category.entries) {
-                                let rewardName = 'Récompense inconnue';
-                                // If the label isn't provided, fetch the definition for the reward entry.
-                                if (entry.rewardrsh) {N
+                                let rewardName = entry.rewardEntryLabel || 'Récompense inconnue';
+                                if (!entry.rewardEntryLabel && entry.rewardEntryHash) {
                                     const rewardDef = await getDefinition('DestinyMilestoneDefinition', entry.rewardEntryHash);
                                     if (rewardDef && rewardDef.displayProperties.name) {
                                         rewardName = rewardDef.displayProperties.name;
@@ -1536,7 +1522,6 @@
                                 const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                                 rewardsHtml += `
                                     <div class="reward-item">
-                                        <span>${entry.rewardEntryLabel || 'Récompense inconnue'}</span>
                                         <span>${rewardName}</span>
                                         <div class="reward-progress">
                                             <div class="reward-progress-bar" style="width: ${percentage.toFixed(0)}%;">${percentage.toFixed(0)}%</div>
@@ -1583,7 +1568,7 @@
             } catch (error) {
                 console.error("Erreur lors du chargement initial des informations du clan:", error);
                 clanInfoDiv.innerHTML = '<p style="text-align: center; color: #ff7b7b;">Erreur lors du chargement des informations du clan.</p>';
-                clanContainer.classList.remove('hidden'); // Ensure it's visible to show the error message
+                clanContainer.classList.remove('hidden');
             }
         }
 
@@ -1817,7 +1802,7 @@
             });
         }
 
-        function saveLoadout(characterId, loadoutName, data, builderItems = null) {
+        function saveLoadout(characterId, loadoutName, data, builderItems = null, type = 'personal') {
             let itemIds = [];
             let itemHashes = [];
 
