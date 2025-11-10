@@ -419,6 +419,46 @@
             width: 100%;
             margin-bottom: 10px;
         }
+
+        .quests-toggle-button {
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .quests-toggle-button:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        .quests-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out;
+            margin-top: 10px;
+        }
+        .quest-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background-color: rgba(0,0,0,0.2);
+            margin-bottom: 5px;
+        }
+        .quest-item img {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+        .quest-info { flex-grow: 1; }
+        .quest-info strong { font-size: 0.9em; }
+        .quest-progress-bar-wrapper { background-color: rgba(0,0,0,0.5); height: 8px; margin-top: 4px; }
+        .quest-progress-bar { background-color: var(--accent-color); height: 100%; }
+        .quest-progress-text { font-size: 0.8em; color: rgba(255,255,255,0.7); }
+
     </style>
 </head>
 
@@ -645,7 +685,7 @@
 
             try {
                 const session = getSessionFromCache();
-                const components = [100, 200, 205, 300, 304, 305].join(',');
+                const components = [100, 200, 201, 202, 205, 300, 304, 305].join(',');
                 const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/?components=${components}`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
                 });
@@ -773,7 +813,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [100, 102, 200, 205, 300, 304, 305].join(',');
+                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
@@ -928,6 +968,53 @@
             card.style.backgroundSize = 'cover';
             card.style.backgroundPosition = 'center';
 
+            const questsInventory = data.characterInventories?.data?.[characterId]?.items.filter(item => item.bucketHash === 1345459588);
+            if (questsInventory && questsInventory.length > 0) {
+                const questsContainer = document.createElement('div');
+                const toggleButton = document.createElement('button');
+                toggleButton.className = 'quests-toggle-button';
+                toggleButton.textContent = 'Afficher les quêtes';
+                
+                const questsListDiv = document.createElement('div');
+                questsListDiv.className = 'quests-container';
+
+                toggleButton.onclick = () => {
+                    if (questsListDiv.style.maxHeight) {
+                        questsListDiv.style.maxHeight = null;
+                        toggleButton.textContent = 'Afficher les quêtes';
+                    } else {
+                        questsListDiv.style.maxHeight = questsListDiv.scrollHeight + "px";
+                        toggleButton.textContent = 'Masquer les quêtes';
+                    }
+                };
+
+                questsInventory.forEach(async questItem => {
+                    const questDef = await getDefinition('DestinyInventoryItemDefinition', questItem.itemHash);
+                    if (!questDef || !questDef.displayProperties.name) return;
+
+                    const objectives = data.characterProgressions?.data?.[characterId]?.uninstancedItemObjectives[questItem.itemHash];
+                    let progressHtml = '';
+                    if (objectives && objectives.length > 0) {
+                        const mainObjective = objectives[0];
+                        const progress = mainObjective.progress || 0;
+                        const total = mainObjective.completionValue;
+                        const percentage = total > 0 ? (progress / total) * 100 : 0;
+                        progressHtml = `
+                            <div class="quest-progress-text">${questDef.objectives.objectiveVerbName || 'Progression'}: ${progress} / ${total}</div>
+                            <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
+                        `;
+                    }
+
+                    questsListDiv.innerHTML += `
+                        <div class="quest-item">
+                            <img src="https://www.bungie.net${questDef.displayProperties.icon}" />
+                            <div class="quest-info"><strong>${questDef.displayProperties.name}</strong>${progressHtml}</div>
+                        </div>`;
+                });
+                questsContainer.appendChild(toggleButton);
+                questsContainer.appendChild(questsListDiv);
+                card.appendChild(questsContainer);
+            }
             return card;
         }
 
