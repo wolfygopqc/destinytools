@@ -798,6 +798,14 @@
             <div id="loadoutsList"></div>
         </div>
 
+        <div id="clanLoadoutsContainer" class="content-container hidden">
+            <h2>Équipements de Clan (Loadouts)</h2>
+            <p>Cette section est destinée à la gestion des équipements spécifiques au clan. (Fonctionnalité à définir)</p>
+            <div id="clanLoadoutsList">
+                <p>Aucun équipement de clan sauvegardé pour le moment.</p>
+            </div>
+        </div>
+
         <div id="clanContainer" class="content-container hidden">
             <h2>Votre Clan</h2>
             <div id="clanInfo"></div>
@@ -856,6 +864,8 @@
         const vendorsList = document.getElementById('vendorsList');
         const loadoutsContainer = document.getElementById('loadoutsContainer');
         const loadoutsList = document.getElementById('loadoutsList');
+        const clanLoadoutsContainer = document.getElementById('clanLoadoutsContainer');
+        const clanLoadoutsList = document.getElementById('clanLoadoutsList');
         const clanContainer = document.getElementById('clanContainer');
         const clanInfoDiv = document.getElementById('clanInfo');
         const createLoadoutBtn = document.getElementById('createLoadoutBtn');
@@ -1074,7 +1084,8 @@
             questsContainer.classList.remove('hidden');
             vendorsContainer.classList.remove('hidden');
             loadoutsContainer.classList.remove('hidden');
-            clanContainer.classList.remove('hidden');
+            clanLoadoutsContainer.classList.remove('hidden'); // Make new clan loadouts visible
+            clanContainer.classList.remove('hidden'); // Ensure clan container is always visible
         }
 
 
