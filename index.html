@@ -150,10 +150,20 @@
             clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
             text-align: left;
             transition: background 0.3s;
-            cursor: pointer;
+            display: flex;
+            gap: 20px;
         }
         .character-info {
-            text-align: left;
+            flex-grow: 1;
+        }
+        .character-render {
+            flex-shrink: 0;
+            width: 150px;
+            height: 320px; /* Adjust height as needed */
+            background-size: cover;
+            background-position: center;
+            border-left: 1px solid var(--border-color);
+            padding-left: 20px;
         }
 
         .character-card h3 {
@@ -167,7 +177,7 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 15px;
             text-align: center;
             margin-top: 15px;
@@ -182,7 +192,7 @@
         }
         .stat-label {
             font-size: 0.7em;
-            text-transform: none;
+            text-transform: uppercase;
             color: rgba(240, 240, 240, 0.6);
         }
         .stat-value {
@@ -190,6 +200,12 @@
             font-weight: bold;
         }
 
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
         .item-slot {
             position: relative;
         }
@@ -198,11 +214,9 @@
             background-color: rgba(0,0,0,0.4);
             border: 1px solid var(--border-color);
             transition: border-color 0.2s;
-            cursor: pointer;
         }
-
-        .character-card .equipment-grid {
-            margin-top: 15px;
+        .item-icon:hover {
+            border-color: var(--hover-color);
         }
 
         .modal-overlay {
@@ -698,7 +712,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -742,6 +756,7 @@
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
             const vaultInventory = data.profileInventory?.data?.items || [];
+            const equipmentData = data.characterEquipment.data;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
             if (vaultInventory.length > 0) {
@@ -775,16 +790,20 @@
             const armorBuckets = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
             const relevantSlots = [...weaponBuckets, ...armorBuckets];
 
-            const createEquippedGrid = (inventory, characterId) => {
-                const equippedItems = inventory.filter(item => item.isEquipped && relevantSlots.includes(item.bucketHash));
+            const createEquippedGrid = (characterId) => {
+                const equippedItems = equipmentData[characterId].items.filter(item => relevantSlots.includes(item.bucketHash));
                 equippedItems.sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash));
 
                 const grid = document.createElement('div');
-                grid.className = 'inventory-grid';
+                grid.className = 'equipment-grid';
                 equippedItems.forEach(item => {
                     grid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
                 return grid;
+            };
+
+            const statDefinitions = {
+                '2996146975': { short: 'MOB', long: 'Mobilité' },'392767087': { short: 'RÉS', long: 'Résilience' },'1943323491': { short: 'RÉC', long: 'Récupération' },'1735777505': { short: 'DIS', long: 'Discipline' },'144602215': { short: 'INT', long: 'Intelligence' },'4244567218': { short: 'FOR', long: 'Force' }
             };
 
             for (const characterId of characterIds) {
@@ -921,10 +940,7 @@
             const itemElement = document.createElement('div');
             itemElement.className = 'item-slot';
             const img = document.createElement('img');
-            img.className = 'item-icon';
-            getDefinition('DestinyInventoryItemDefinition', item.itemHash).then(def => {
-                if (def) img.src = `https://www.bungie.net${def.displayProperties.icon}`;
-            });
+            img.className = 'item-icon';            
             itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
             itemElement.prepend(img);
             itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
@@ -1019,79 +1035,6 @@
             const data = await response.json();
             perkDefinitionsCache[hash] = data.Response;
             return data.Response;
-        }
-
-        async function transferItem(itemId, sourceCharacterId, targetCharacterId, itemHash, quantity) {
-            if (!currentOpenItem) return;
-
-            const { allData } = currentOpenItem;
-            const session = getSessionFromCache();
-            const destinyProfile = allData.profile.data.userInfo;
-
-            const buttons = document.querySelectorAll('#itemActions .action-button');
-            buttons.forEach(btn => {
-                btn.disabled = true;
-                btn.textContent = 'Transfert...';
-            });
-
-            try {
-                if (sourceCharacterId !== 'vault' && targetCharacterId !== 'vault') {
-                    const toVaultResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
-                        method: 'POST',
-                        headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
-                        body: JSON.stringify({ itemReferenceHash: itemHash, stackSize: quantity, transferToVault: true, itemId: itemId, characterId: sourceCharacterId, membershipType: destinyProfile.membershipType })
-                    });
-                    const toVaultData = await toVaultResponse.json();
-                    if (toVaultData.ErrorCode !== 1) throw new Error(`Étape 1/2: ${toVaultData.Message}`);
-                }
-
-                const finalTransferCharacter = (sourceCharacterId === 'vault') ? targetCharacterId : (targetCharacterId === 'vault' ? sourceCharacterId : targetCharacterId);
-                const fromVaultResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/', {
-                    method: 'POST',
-                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
-                    body: JSON.stringify({ itemReferenceHash: itemHash, stackSize: quantity, transferToVault: targetCharacterId === 'vault', itemId: itemId, characterId: finalTransferCharacter, membershipType: destinyProfile.membershipType })
-                });
-                const fromVaultData = await fromVaultResponse.json();
-                if (fromVaultData.ErrorCode !== 1) {
-                    const step = (sourceCharacterId !== 'vault' && targetCharacterId !== 'vault') ? 'Étape 2/2' : 'Étape 1/1';
-                    throw new Error(`${step}: ${fromVaultData.Message}`);
-                }
-                alert('Objet transféré avec succès !');
-                itemDetailModal.classList.remove('visible');
-                inventoryModal.classList.remove('visible');
-                refreshBtn.click();
-            } catch (error) {
-                alert(`Erreur lors du transfert : ${error.message}`);
-                buttons.forEach(btn => {
-                    btn.disabled = false;
-                    btn.textContent = 'Réessayer'; 
-                });
-            }
-        }
-
-        async function equipItem(itemId, characterId) {
-            const session = getSessionFromCache();
-            const destinyProfile = currentOpenItem.allData.profile.data.userInfo;
-            const buttons = document.querySelectorAll('#itemActions .action-button');
-            buttons.forEach(btn => btn.disabled = true);
-
-            try {
-                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItem/', {
-                    method: 'POST',
-                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` },
-                    body: JSON.stringify({ itemId: itemId, characterId: characterId, membershipType: destinyProfile.membershipType })
-                });
-                const responseData = await response.json();
-                if (responseData.ErrorCode !== 1) throw new Error(responseData.Message);
-
-                alert('Objet équipé avec succès !');
-                itemDetailModal.classList.remove('visible');
-                inventoryModal.classList.remove('visible');
-                refreshBtn.click();
-            } catch (error) {
-                alert(`Erreur lors de l'équipement : ${error.message}`);
-                buttons.forEach(btn => btn.disabled = false);
-            }
         }
 
         function handleApiError(error) {
