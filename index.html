@@ -710,7 +710,18 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterRenderData,CharacterCustomization,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
+                const components = [
+                    100, // Profiles
+                    200, // Characters
+                    203, // CharacterRenderData
+                    205, // CharacterEquipment
+                    300, // ItemInstances
+                    304, // ItemStats
+                    305, // ItemSockets
+                    1200 // CharacterCustomization
+                ].join(',');
+
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
