@@ -265,6 +265,10 @@
             font-style: italic;
             color: rgba(240, 240, 240, 0.7);
         }
+        .item-detail-body .item-type {
+            color: rgba(240, 240, 240, 0.8);
+            font-weight: bold;
+        }
         .item-detail-body p {
             margin: 5px 0 15px 0;
         }
@@ -293,6 +297,38 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.2);
+            border-left: 2px solid transparent;
+        }
+        .perk-item p {
+            margin: 5px 0 0 0;
+            font-size: 0.9em;
+            color: rgba(240, 240, 240, 0.7);
+        }
+        .perk-item img {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+        }
+        /* Rarity Colors */
+        .rarity-6 { border-left-color: #ceae33; } /* Exotic */
+        .rarity-5 { border-left-color: #522f65; } /* Legendary */
+        .rarity-4 { border-left-color: #5076a3; } /* Rare */
+        .rarity-3 { border-left-color: #366f42; } /* Uncommon */
+        .rarity-2 { border-left-color: #c3bcb4; } /* Common */
+
+        #itemDetailIcon.rarity-border-6 { border-color: #ceae33; }
+        #itemDetailIcon.rarity-border-5 { border-color: #522f65; }
+        #itemDetailIcon.rarity-border-4 { border-color: #5076a3; }
+        #itemDetailIcon.rarity-border-3 { border-color: #366f42; }
+        #itemDetailIcon.rarity-border-2 { border-color: #c3bcb4; }
+
+        .inventory-section {
+            margin-bottom: 20px;
+        }
+        .equipped-items {
             margin-bottom: 10px;
         }
         .perk-item img {
@@ -874,9 +910,12 @@
                 if (!itemDef) throw new Error("Définition de l'objet introuvable.");
 
                 itemDetailName.textContent = itemDef.displayProperties.name;
+                
+                itemDetailIcon.className = `rarity-border-${itemDef.inventory.tierType}`;
                 itemDetailIcon.src = `https://www.bungie.net${itemDef.displayProperties.icon}`;
+
                 let bodyHtml = `
-                    <p>${itemDef.itemTypeAndTierDisplayName}</p>
+                    <p class="item-type">${itemDef.itemTypeAndTierDisplayName}</p>
                     <p>${itemDef.displayProperties.description}</p>
                     <p class="flavor-text">${itemDef.flavorText || ''}</p>
                 `;
@@ -922,7 +961,7 @@
                     for (const perkDef of perkDefs) {
                         if (perkDef && perkDef.displayProperties.name && (perkDef.itemTypeDisplayName === "Attribut d'arme" || perkDef.itemTypeDisplayName === "Attribut d'armure")) {
                              bodyHtml += `
-                                <div class="perk-item">
+                                <div class="perk-item rarity-${perkDef.inventory.tierType}">
                                     <img src="https://www.bungie.net${perkDef.displayProperties.icon}" />
                                     <div>
                                         <strong>${perkDef.displayProperties.name}</strong>
