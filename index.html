@@ -202,7 +202,8 @@
 
         .equipment-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(4, 64px);
+            justify-content: start;
             gap: 10px;
             margin-top: 20px;
         }
@@ -853,7 +854,7 @@
                 } else {
                     clearInterval(refreshIntervalId);
                 }
-            }, 120000);
+            }, 120);
         }
 
         function showInventoryModal(characterId, data) {
