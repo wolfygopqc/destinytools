@@ -18,7 +18,7 @@ class SpasmRenderer {
     }
 
     initialize() {
-        try {
+        try { 
             // Initialize Spasm's ItemPreview, which is the main controller for rendering
             this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl);
 
