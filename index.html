@@ -702,7 +702,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterRenderData,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -746,6 +746,7 @@
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
             const vaultInventory = data.profileInventory?.data?.items || [];
+            const renderData = data.characterRenderData?.data;
             const equipmentData = data.characterEquipment.data;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
@@ -816,6 +817,15 @@
                     }
                     statsHtml += '</div>';
 
+                    let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`; // Fallback
+                    if (renderData && renderData[characterId]) {
+                        const characterView = renderData[characterId].peerView;
+                        if (characterView) {
+                            const equipmentHashes = characterView.equipment.map(e => e.itemHash);
+                            renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${data.profile.data.userInfo.membershipType}/${data.profile.data.userInfo.membershipId}/${characterId}/CharacterRender.png?character=${characterId}&items=${equipmentHashes.join(',')}`;
+                        }
+                    }
+
                     const equipmentGrid = createEquippedGrid(characterId);
 
                     card.innerHTML = `
@@ -825,7 +835,7 @@
                             <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                             ${statsHtml}
                         </div>
-                        <div class="character-render" style="background-image: url(https://www.bungie.net${char.emblemPath.replace('emblems', 'character_backdrops')})"></div>
+                        <div class="character-render" style="background-image: url(${renderImageUrl})"></div>
                     `;
                     card.querySelector('.character-info').appendChild(equipmentGrid);
                     
@@ -854,7 +864,7 @@
                 } else {
                     clearInterval(refreshIntervalId);
                 }
-            }, 120);
+            }, 30000);
         }
 
         function showInventoryModal(characterId, data) {
