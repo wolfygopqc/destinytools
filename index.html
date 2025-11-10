@@ -817,7 +817,7 @@
                     }
                     statsHtml += '</div>';
 
-                    let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`; // Fallback
+                    let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`;
                     if (renderData && renderData[characterId]) {
                         const characterView = renderData[characterId].peerView;
                         if (characterView) {
@@ -859,7 +859,6 @@
                     if (Date.now() > session.accessTokenExpiresAt) {
                         refreshToken(session.refreshToken);
                     } else {
-                        // This call doesn't need the extra params, they are derived inside
                         getProfileDataWithToken(session.accessToken, session.membershipId); 
                     }
                 } else {
