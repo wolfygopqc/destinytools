@@ -168,6 +168,7 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             text-align: center;
             margin-top: 15px;
@@ -739,8 +740,18 @@
             const card = document.createElement('div');
             card.className = 'character-card';
 
+            const statOrder = [
+                '144602215',  // SUPER
+                '1735777505', // GRENADE
+                '2996146975', // ARMES
+                '392767087',  // SANTÉ
+                '1943323491', // CLASSE
+                '4244567218'  // MÊLÉE
+            ];
+
             let statsHtml = '<div class="stats-grid">';
             for (const hash in statDefinitions) {
+            for (const hash of statOrder) {
                 const statInfo = statDefinitions[hash];
                 statsHtml += `
                     <div class="stat-item" title="${statInfo.long}">
