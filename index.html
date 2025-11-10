@@ -646,8 +646,6 @@
         #playerSearch input[type="text"] { width: 50%; margin-right: 10px; }
         #importLoadoutInput, #newLoadoutName, .loadout-save-section input[type="text"] { flex-grow: 1; }
 
-    </style>
-    <style>
         .clan-header {
             display: flex;
             align-items: center;
@@ -659,7 +657,7 @@
         .clan-banner {
             width: 100px;
             height: 200px;
-            object-fit: cover; /* Changed to cover to fill the space better */
+            object-fit: cover;
             flex-shrink: 0;
         }
         .clan-details h3 {
@@ -1479,8 +1477,8 @@
                 let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                 if (weeklyRewardData.ErrorCode === 1) {
                     for (const reward of weeklyRewardData.Response.rewards) {
-                        for (const entry of reward.entries) { // entry.progressTotal is the completion value
-                            const totalProgress = entry.progressTotal || 1; // Avoid division by zero
+                        for (const entry of reward.entries) {
+                            const totalProgress = entry.progressTotal || 1;
                             const currentProgress = entry.progress || 0;
                             const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                             rewardsHtml += `
@@ -1971,17 +1969,6 @@
                 currentLoadoutBuilder = newLoadout;
                 openLoadoutBuilder();
                 updateSelectedLoadoutItems();
-                document.getElementById('newLoadoutName').value = "Équipement importé";
-
-            } catch (error) {
-                alert("Code d'équipement invalide ou corrompu.");
-                console.error("Erreur d'importation :", error);
-            }
-        }
-    </script>
-</body>
- 
-</html>
                 document.getElementById('newLoadoutName').value = "Équipement importé";
 
             } catch (error) {
