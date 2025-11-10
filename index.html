@@ -139,7 +139,7 @@
         }
         #characters {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr; /* Changed from auto-fit to single column */
             gap: 20px;
         }
         .character-card {
@@ -202,7 +202,7 @@
 
         .equipment-grid {
             display: grid;
-            grid-template-columns: repeat(8, 64px);
+            grid-template-columns: repeat(8, 64px); /* Fixed size for icons */
             justify-content: start;
             gap: 10px;
             margin-top: 20px;
@@ -711,7 +711,7 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-                displayData(profileData.Response, destinyMembershipId, membershipType);
+                displayData(profileData.Response, destinyMembershipId, membershipType); // Pass correct IDs
 
             } catch (error) {
                 handleApiError(error);
@@ -734,13 +734,14 @@
             return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
-        function displayData(data, destinyMembershipId, membershipType) {
+        function displayData(data, destinyMembershipId, membershipType) { // Receive correct IDs
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
             const profileInfo = data.profile.data.userInfo;
             userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
 
+            // Clear previous character cards
             charactersDiv.innerHTML = '';
 
             const characterData = data.characters.data;
