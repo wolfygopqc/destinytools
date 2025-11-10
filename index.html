@@ -722,7 +722,7 @@
 <body>
 
     <header>
-        <h1>Mon Portail Destiny 2</h1>
+        <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
         <button id="refreshBtn" class="hidden">Rafraîchir</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
@@ -1476,7 +1476,7 @@
                     if (weeklyRewardData.ErrorCode === 1) {
                         for (const reward of weeklyRewardData.Response.rewards) {
                             for (const entry of reward.entries) {
-                                const totalProgress = entry.progressTotal || 1;
+                                const totalProgress = entry.progressTotal || 1; 
                                 const currentProgress = entry.progress || 0;
                                 const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                                 rewardsHtml += `
@@ -1524,7 +1524,6 @@
                 membersHtml += '</table></div>';
 
                 clanInfoDiv.innerHTML = headerHtml + progressionHtml + rewardsHtml + membersHtml;
-
             } catch (error) {
                 console.error("Erreur lors du chargement des informations du clan:", error);
                 clanContainer.classList.add('hidden');
