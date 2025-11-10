@@ -460,7 +460,7 @@
             <h2>Communauté</h2>
             <p>Rechercher un Gardien pour voir ses personnages et son équipement.</p>
             <div id="playerSearch">
-                <input type="text" id="searchPlayerInput" placeholder="Bungie Name#1234" style="padding: 8px; width: 50%; margin-right: 10px;">
+                <input type="text" id="searchPlayerInput" placeholder="Bungie Name" style="padding: 8px; width: 50%; margin-right: 10px;">
                 <button id="searchPlayerBtn" class="action-button" style="width: auto;">Rechercher</button>
             </div>
         </div>
@@ -588,7 +588,6 @@
 
             const parts = bungieNameFull.split('#');
 
-            // Si le nom contient un #, on fait une recherche exacte
             if (parts.length === 2 && parts[0] && parts[1]) {
                 const displayName = parts[0];
                 const displayNameCode = parts[1];
@@ -607,9 +606,9 @@
                 } catch (error) {
                     playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur : ${error.message}</p>`;
                 }
-            } else { // Sinon, on recherche par préfixe
+            } else {
                 try {
-                    const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/Search/Global/Name/0/`, {
+                    const searchResponse = await fetch(`https://www.bungie.net/Platform/User/Search/GlobalName/0/`, {
                         method: 'POST',
                         headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ displayNamePrefix: bungieNameFull })
@@ -622,11 +621,14 @@
                     playerProfileName.textContent = `Résultats pour "${bungieNameFull}"`;
                     playerProfileContent.innerHTML = '';
                     searchData.Response.searchResults.forEach(player => {
+                        if (!player.destinyMemberships || player.destinyMemberships.length === 0) return;
+                        
+                        const destinyInfo = player.destinyMemberships[0];
                         const playerDiv = document.createElement('div');
                         playerDiv.className = 'player-search-result';
                         playerDiv.style = 'display: flex; align-items: center; padding: 10px; cursor: pointer; border-bottom: 1px solid var(--border-color);';
-                        playerDiv.innerHTML = `<img src="https://www.bungie.net${player.iconPath}" style="width: 48px; height: 48px; margin-right: 15px;"> <span>${player.bungieGlobalDisplayName}#${player.bungieGlobalDisplayNameCode}</span>`;
-                        playerDiv.onclick = () => showPlayerProfile(player.membershipType, player.membershipId, player.bungieGlobalDisplayName, player.bungieGlobalDisplayNameCode);
+                        playerDiv.innerHTML = `<img src="https://www.bungie.net${destinyInfo.iconPath}" style="width: 48px; height: 48px; margin-right: 15px;"> <span>${player.bungieGlobalDisplayName}#${player.bungieGlobalDisplayNameCode}</span>`;
+                        playerDiv.onclick = () => showPlayerProfile(destinyInfo.membershipType, destinyInfo.membershipId, player.bungieGlobalDisplayName, player.bungieGlobalDisplayNameCode);
                         playerProfileContent.appendChild(playerDiv);
                     });
                 } catch (error) {
