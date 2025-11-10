@@ -471,6 +471,24 @@
             color: rgba(255,255,255,0.6);
             margin-top: 5px;
         }
+        .quest-rewards-section {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .quest-rewards-section h5 {
+            margin: 0 0 5px 0;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.7);
+        }
+        .quest-reward-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+        .quest-reward-item img { width: 24px; height: 24px; }
         .history-item {
             cursor: pointer;
             padding: 8px;
@@ -957,7 +975,7 @@
                                 const percentage = total > 0 ? (progress / total) * 100 : 0;
                                 
                                 objectivesHtml += `
-                                    <div class="quest-progress-text">${objectiveDef.progressDescription || 'Progression'}: ${progress} / ${total}</div>
+                                    <div class="quest-progress-text">${objectiveDef.progressDescription || 'Progression'} ${progress} / ${total}</div>
                                     <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
                                 `;
                             }
@@ -966,6 +984,24 @@
                         let detailsHtml = '';
                         if (questDef.displaySource) {
                             detailsHtml += `<div class="quest-details">📍 ${questDef.displaySource}</div>`;
+                        }
+
+                        let rewardsHtml = '';
+                        if (questDef.value && questDef.value.itemValue.length > 0) {
+                            rewardsHtml += `<div class="quest-rewards-section"><h5>Récompenses</h5>`;
+                            for (const rewardItem of questDef.value.itemValue) {
+                                const rewardDef = await getDefinition('DestinyInventoryItemDefinition', rewardItem.itemHash);
+                                if (rewardDef) {
+                                    rewardsHtml += `
+                                        <div class="quest-reward-item">
+                                            <img src="https://www.bungie.net${rewardDef.displayProperties.icon}" />
+                                            <span>${rewardDef.displayProperties.name}</span>
+                                            <span>x${rewardItem.quantity}</span>
+                                        </div>
+                                    `;
+                                }
+                            }
+                            rewardsHtml += `</div>`;
                         }
 
                         const questElement = document.createElement('div');
@@ -977,6 +1013,7 @@
                                 <div class="quest-collapsible-content">
                                     ${objectivesHtml}
                                     ${detailsHtml}
+                                    ${rewardsHtml}
                                 </div>
                             </div>
                         `;
