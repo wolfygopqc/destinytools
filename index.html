@@ -683,8 +683,7 @@
             if (vaultInventory.length > 0) {
                 vaultGrid.innerHTML = '';
                 
-                // Sort items for a consistent view (e.g., by type then power)
-                // This is a simple sort, can be made more complex
+                
                 vaultInventory.sort((a, b) => a.bucketHash - b.bucketHash);
 
                 vaultInventory.forEach(item => {
@@ -692,7 +691,7 @@
                     vaultGrid.appendChild(itemElement);
                 });
 
-                // Add empty slots to fill the grid
+                
                 const remainder = vaultInventory.length % 8;
                 if (remainder > 0) {
                     const emptySlotsToAdd = 8 - remainder;
@@ -716,13 +715,12 @@
                 const equippedItems = inventory.filter(item => item.isEquipped && relevantSlots.includes(item.bucketHash));
                 equippedItems.sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash));
 
-                let gridHtml = '<div class="inventory-grid">';
+                const grid = document.createElement('div');
+                grid.className = 'inventory-grid';
                 equippedItems.forEach(item => {
-                    const itemElement = createItemElement(item, itemInstances, data, characterId);
-                    gridHtml += itemElement.outerHTML;
+                    grid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
-                gridHtml += '</div>';
-                return gridHtml;
+                return grid;
             };
 
             for (const characterId of characterIds) {
@@ -755,15 +753,15 @@
                     statsHtml += '</div>';
 
                     const characterInventory = data.characterInventories?.data?.[characterId]?.items || [];
-                    const equipmentHtml = createEquippedGrid(characterInventory, characterId);
+                    const equipmentGrid = createEquippedGrid(characterInventory, characterId);
 
                     card.innerHTML = `
                         <h3>${classMap[char.classType] || 'Inconnue'}</h3>
                         <p><strong>Lumière :</strong> ${char.light}</p>
                         <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                         ${statsHtml}
-                        ${equipmentHtml}
                     `;
+                    card.appendChild(equipmentGrid);
                     
                     card.addEventListener('click', () => {
                         showInventoryModal(characterId, data);
@@ -775,13 +773,6 @@
                     card.style.backgroundImage = `linear-gradient(rgba(31, 31, 31, 0.8), rgba(31, 31, 31, 0.8)), url(${backgroundUrl})`;
                     card.style.backgroundSize = 'cover';
                     card.style.backgroundPosition = 'center';
-
-                    const cardItemSlots = card.querySelectorAll('.item-slot');
-                    const equippedItems = characterInventory.filter(item => item.isEquipped && relevantSlots.includes(item.bucketHash));
-                    equippedItems.sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash));
-                    cardItemSlots.forEach((slot, index) => {
-                        slot.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(equippedItems[index], data, characterId); });
-                    });
 
                     charactersDiv.appendChild(card);
                 }
@@ -861,15 +852,17 @@
 
         function createItemElement(item, itemInstances, data, characterId) {
             const instance = itemInstances[item.itemInstanceId];
-            const power = instance?.primaryStat?.value || '';
-            const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
+            const power = instance?.primaryStat?.value || '';            
             
             const itemElement = document.createElement('div');
             itemElement.className = 'item-slot';
-            itemElement.innerHTML = `
-                <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
-                <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
-            `;
+            const img = document.createElement('img');
+            img.className = 'item-icon';
+            getDefinition('DestinyInventoryItemDefinition', item.itemHash).then(def => {
+                if (def) img.src = `https://www.bungie.net${def.displayProperties.icon}`;
+            });
+            itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
+            itemElement.prepend(img);
             itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
             return itemElement;
         }
