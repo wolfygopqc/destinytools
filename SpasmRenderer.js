@@ -20,7 +20,7 @@ class SpasmRenderer {
     initialize() {
         try { 
             // Initialize Spasm's ItemPreview, which is the main controller for rendering
-            this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl);
+            this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl, true, true);
 
             // Spasm.js requires a specific data structure combining gear, dyes, and customization.
             const gear = {
@@ -45,7 +45,7 @@ class SpasmRenderer {
                     if (success) {
                         console.log(`Character ${this.characterData.characterId} rendered successfully.`);
                         // Apply the specific dyes and customization after loading the assets
-                        this.itemPreview.setDyes(this.renderData.customDyes);
+                        this.itemPreview.setDyes(this.renderData.customDyes); // This is the correct format
                         this.itemPreview.setCustomization(this.renderData.customization.options);
                         this.itemPreview.startAnimating();
                     } else {

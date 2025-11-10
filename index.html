@@ -18,6 +18,7 @@
         }
         canvas {
             outline: none;
+            background-color: transparent;
         }
 
         body { 
@@ -142,7 +143,7 @@
         }
         #characters {
             display: grid;
-            grid-template-columns: 1fr; /* Changed from auto-fit to single column */
+            grid-template-columns: 1fr;
             gap: 20px;
         }
         .character-card {
@@ -162,7 +163,7 @@
         .character-render {
             flex-shrink: 0;
             width: 150px;
-            height: 320px; /* The canvas will take this size */
+            height: 320px;
             border-left: 1px solid var(--border-color);
             padding-left: 20px;
             display: flex;
@@ -206,7 +207,7 @@
 
         .equipment-grid {
             display: grid;
-            grid-template-columns: repeat(8, 64px); /* Fixed size for icons */
+            grid-template-columns: repeat(8, 64px);
             justify-content: start;
             gap: 10px;
             margin-top: 20px;
@@ -709,7 +710,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterRenderData,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterRenderData,CharacterCustomization,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -718,7 +719,7 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-                displayData(profileData.Response, destinyMembershipId, membershipType); // Pass correct IDs
+                displayData(profileData.Response, destinyMembershipId, membershipType);
 
             } catch (error) {
                 handleApiError(error);
@@ -741,14 +742,13 @@
             return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
-        function displayData(data, destinyMembershipId, membershipType) { // Receive correct IDs
+        function displayData(data, destinyMembershipId, membershipType) {
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
             const profileInfo = data.profile.data.userInfo;
             userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
 
-            // Clear previous character cards
             charactersDiv.innerHTML = '';
 
             const characterData = data.characters.data;
@@ -813,7 +813,6 @@
             const raceMap = { 0: "Humain", 1: "Éveillé", 2: "Exo" };
             const statDefinitions = {
                 '2996146975': { short: 'MOB', long: 'Mobilité' }, '392767087': { short: 'RÉS', long: 'Résilience' }, '1943323491': { short: 'RÉC', long: 'Récupération' }, '1735777505': { short: 'DIS', long: 'Discipline' }, '144602215': { short: 'INT', long: 'Intelligence' }, '4244567218': { short: 'FOR', long: 'Force' }
-
             };
 
             const card = document.createElement('div');
@@ -855,7 +854,6 @@
             `;
             card.querySelector('.character-info').appendChild(equipmentGrid);
 
-            // After the card is in the DOM, initialize the renderer
             setTimeout(() => {
                 const canvas = document.getElementById(`render-canvas-${characterId}`);
                 const renderData = data.characterRenderData?.data?.[characterId];
