@@ -855,10 +855,10 @@
             charactersDiv.innerHTML = '';
 
             const characterIds = data.profile.data.characterIds;
-            const vaultInventory = data.profileInventory?.data?.items || [];
-            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
-            if (vaultInventory.length > 0) {
+            
+            if (data.profileInventory?.data?.items) {
                 vaultGrid.innerHTML = '';
+                const vaultInventory = data.profileInventory.data.items;
                 
                 vaultInventory.sort((a, b) => a.bucketHash - b.bucketHash);
     
@@ -878,8 +878,6 @@
                 }
     
                 vaultDisplayContainer.classList.remove('hidden');
-            } else {
-                vaultDisplayContainer.classList.add('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -933,7 +931,7 @@
             const equipmentGrid = document.createElement('div');
             equipmentGrid.className = 'equipment-grid';
             const equipmentData = data.characterEquipment.data[characterId].items;
-            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = data.itemComponents?.instances?.data || {};
             const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
             equipmentData
                 .filter(item => relevantSlots.includes(item.bucketHash))
@@ -1333,6 +1331,10 @@
             }
         }
 
+    </script>
+</body>
+ 
+</html>
     </script>
 </body>
  
