@@ -1243,7 +1243,6 @@
                 questsContainer.classList.remove('hidden');
                 vendorsContainer.classList.remove('hidden');
                 loadoutsContainer.classList.remove('hidden');
-                clanContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -1423,13 +1422,15 @@
         async function displayClanInfo(profileData) {
             const { membershipType, membershipId } = currentUserInfo;
 
+            clanInfoDiv.innerHTML = '';
+            clanContainer.classList.add('hidden');
+
             try {
                 const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
                 const groupsData = await groupsResponse.json();
                 if (groupsData.ErrorCode !== 1 || groupsData.Response.results.length === 0) {
-                    clanContainer.classList.add('hidden');
                     return;
                 }
 
@@ -1447,6 +1448,7 @@
                         </div>
                     </div>
                 `;
+                clanInfoDiv.innerHTML += headerHtml;
 
                 let progressionHtml = '<div class="clan-progression">';
                 const clanProgress = clan.clanInfo.d2ClanProgress;
@@ -1455,7 +1457,6 @@
                 }, 0);
                 const clanLevelTotal = clanProgress.nextLevelAt || 1;
                 const clanLevelCurrent = clanProgress.progressToNextLevel || 0;
-
                 progressionHtml += `
                     <div class="reward-item">
                         <span>Niveau de Clan : ${clanProgress.level}</span>
@@ -1468,6 +1469,7 @@
                     </div>
                 `;
                 progressionHtml += '</div>';
+                clanInfoDiv.innerHTML += progressionHtml;
 
                 let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                 try {
@@ -1476,7 +1478,7 @@
                     if (weeklyRewardData.ErrorCode === 1) {
                         for (const reward of weeklyRewardData.Response.rewards) {
                             for (const entry of reward.entries) {
-                                const totalProgress = entry.progressTotal || 1; 
+                                const totalProgress = entry.progressTotal || 1;
                                 const currentProgress = entry.progress || 0;
                                 const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                                 rewardsHtml += `
@@ -1497,6 +1499,7 @@
                     rewardsHtml += `<p style="color: #ff7b7b;">Erreur lors du chargement des récompenses hebdomadaires.</p>`;
                 }
                 rewardsHtml += '</div>';
+                clanInfoDiv.innerHTML += rewardsHtml;
 
                 let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
                 try {
@@ -1522,10 +1525,9 @@
                     membersHtml += `<tr><td colspan="3" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td></tr>`;
                 }
                 membersHtml += '</table></div>';
-
-                clanInfoDiv.innerHTML = headerHtml + progressionHtml + rewardsHtml + membersHtml;
+                clanInfoDiv.innerHTML += membersHtml;
             } catch (error) {
-                console.error("Erreur lors du chargement des informations du clan:", error);
+                console.error("Erreur lors du chargement initial des informations du clan:", error);
                 clanContainer.classList.add('hidden');
             }
         }
