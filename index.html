@@ -1423,6 +1423,7 @@
         async function displayClanInfo(profileData) { // profileData is needed for personal contribution
             const { membershipType, membershipId } = currentUserInfo;
 
+        async function displayClanInfo(profileData) {
             try {
                 const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
