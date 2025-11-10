@@ -659,7 +659,7 @@
         .clan-banner {
             width: 100px;
             height: 200px;
-            object-fit: contain;
+            object-fit: cover; /* Changed to cover to fill the space better */
             flex-shrink: 0;
         }
         .clan-details h3 {
@@ -1447,7 +1447,7 @@
 
                 let headerHtml = `
                     <div class="clan-header">
-                        <img class="clan-banner" src="https://www.bungie.net${clan.bannerPath}">
+                        <img class="clan-banner" src="https://www.bungie.net${clan.bannerPath}" style="width: 200px; height: 100px;">
                         <div class="clan-details">
                             <h3>${clan.name} [${clan.clanInfo.clanCallsign}]</h3>
                             <p class="motto">"${clan.motto}"</p>
@@ -1460,12 +1460,14 @@
                 const personalContribution = Object.values(profileData.characterProgressions.data).reduce((total, char) => {
                     return total + (char.progressions[540048094]?.weeklyProgress || 0);
                 }, 0);
+                const clanLevelTotal = clanProgress.nextLevelAt || 1;
+                const clanLevelCurrent = clanProgress.progressToNextLevel || 0;
 
                 progressionHtml += `
                     <div class="reward-item">
                         <span>Niveau de Clan : ${clanProgress.level}</span>
                         <div class="reward-progress">
-                            <div class="reward-progress-bar" style="width: ${(clanProgress.progressToNextLevel / clanProgress.nextLevelAt) * 100}%;">${clanProgress.progressToNextLevel} / ${clanProgress.nextLevelAt} XP</div>
+                            <div class="reward-progress-bar" style="width: ${((clanLevelCurrent / clanLevelTotal) * 100).toFixed(0)}%;">${clanLevelCurrent} / ${clanLevelTotal} XP</div>
                         </div>
                     </div>
                     <div class="reward-item">
@@ -1477,13 +1479,15 @@
                 let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                 if (weeklyRewardData.ErrorCode === 1) {
                     for (const reward of weeklyRewardData.Response.rewards) {
-                        for (const entry of reward.entries) {
-                            const progress = entry.earned ? 100 : ((entry.progress || 0) / 100000) * 100;
+                        for (const entry of reward.entries) { // entry.progressTotal is the completion value
+                            const totalProgress = entry.progressTotal || 1; // Avoid division by zero
+                            const currentProgress = entry.progress || 0;
+                            const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                             rewardsHtml += `
                                 <div class="reward-item">
-                                    <span>${entry.rewardEntryLabel}</span>
+                                    <span>${entry.rewardEntryLabel || 'Récompense inconnue'}</span>
                                     <div class="reward-progress">
-                                        <div class="reward-progress-bar" style="width: ${progress.toFixed(0)}%;">${progress.toFixed(0)}%</div>
+                                        <div class="reward-progress-bar" style="width: ${percentage.toFixed(0)}%;">${percentage.toFixed(0)}%</div>
                                     </div>
                                 </div>
                             `;
@@ -1967,6 +1971,17 @@
                 currentLoadoutBuilder = newLoadout;
                 openLoadoutBuilder();
                 updateSelectedLoadoutItems();
+                document.getElementById('newLoadoutName').value = "Équipement importé";
+
+            } catch (error) {
+                alert("Code d'équipement invalide ou corrompu.");
+                console.error("Erreur d'importation :", error);
+            }
+        }
+    </script>
+</body>
+ 
+</html>
                 document.getElementById('newLoadoutName').value = "Équipement importé";
 
             } catch (error) {
