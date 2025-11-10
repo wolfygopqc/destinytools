@@ -800,10 +800,12 @@
 
         <div id="clanLoadoutsContainer" class="content-container hidden">
             <h2>Équipements de Clan (Loadouts)</h2>
-            <p>Cette section est destinée à la gestion des équipements spécifiques au clan. (Fonctionnalité à définir)</p>
-            <div id="clanLoadoutsList">
-                <p>Aucun équipement de clan sauvegardé pour le moment.</p>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+                <button id="createClanLoadoutBtn" class="action-button" style="width: auto;">Créer un équipement de clan</button>
+                <input type="text" id="importClanLoadoutInput" placeholder="Coller un code d'équipement de clan">
+                <button id="importClanLoadoutBtn" class="action-button" style="width: auto;">Importer</button>
             </div>
+            <div id="clanLoadoutsList"></div>
         </div>
 
         <div id="clanContainer" class="content-container hidden">
@@ -866,6 +868,9 @@
         const loadoutsList = document.getElementById('loadoutsList');
         const clanLoadoutsContainer = document.getElementById('clanLoadoutsContainer');
         const clanLoadoutsList = document.getElementById('clanLoadoutsList');
+        const createClanLoadoutBtn = document.getElementById('createClanLoadoutBtn');
+        const importClanLoadoutBtn = document.getElementById('importClanLoadoutBtn');
+        const importClanLoadoutInput = document.getElementById('importClanLoadoutInput');
         const clanContainer = document.getElementById('clanContainer');
         const clanInfoDiv = document.getElementById('clanInfo');
         const createLoadoutBtn = document.getElementById('createLoadoutBtn');
@@ -893,6 +898,7 @@
             const session = getSessionFromCache();
             displaySearchHistory();
             displayLoadouts();
+            displayClanLoadouts();
             if (session) {
                 showContent();
                 if (Date.now() > session.accessTokenExpiresAt) {
@@ -967,6 +973,18 @@
             if (code) {
                 importLoadoutFromCode(code);
                 document.getElementById('importLoadoutInput').value = '';
+            }
+        });
+
+        createClanLoadoutBtn.addEventListener('click', () => {
+            openLoadoutBuilder('clan');
+        });
+
+        importClanLoadoutBtn.addEventListener('click', () => {
+            const code = importClanLoadoutInput.value.trim();
+            if (code) {
+                importLoadoutFromCode(code, 'clan');
+                importClanLoadoutInput.value = '';
             }
         });
 
@@ -1223,6 +1241,8 @@
             currentUserInfo = { bungieGlobalDisplayName: profileInfo.bungieGlobalDisplayName, bungieGlobalDisplayNameCode: profileInfo.bungieGlobalDisplayNameCode, membershipId: profileInfo.membershipId, membershipType: profileInfo.membershipType };
             userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
 
+            await displayClanInfo(data);
+
             charactersDiv.innerHTML = '';
 
             const characterIds = data.profile.data.characterIds;
@@ -1346,8 +1366,6 @@
             }
 
             await displayVendors(data);
-            
-            await displayClanInfo(data);
 
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
@@ -1431,6 +1449,7 @@
         }
 
         async function displayClanInfo(profileData) {
+            if (!currentUserInfo) return; // Wait for currentUserInfo to be set
             const { membershipType, membershipId } = currentUserInfo;
 
             clanInfoDiv.innerHTML = ''; // Clear previous content
@@ -1796,10 +1815,11 @@
                 itemHashes: itemHashes
             };
 
-            let loadouts = JSON.parse(localStorage.getItem('destinyLoadouts')) || [];
+            const storageKey = type === 'clan' ? 'destinyClanLoadouts' : 'destinyLoadouts';
+            let loadouts = JSON.parse(localStorage.getItem(storageKey)) || [];
             newLoadout.id = Date.now();
             loadouts.unshift(newLoadout);
-            localStorage.setItem('destinyLoadouts', JSON.stringify(loadouts));
+            localStorage.setItem(storageKey, JSON.stringify(loadouts));
             displayLoadouts();
         }
 
@@ -1858,6 +1878,61 @@
             }
         }
 
+        async function displayClanLoadouts() {
+            let loadouts = JSON.parse(localStorage.getItem('destinyClanLoadouts')) || [];
+            clanLoadoutsList.innerHTML = '';
+
+            if (loadouts.length === 0) {
+                clanLoadoutsList.innerHTML = '<p>Aucun équipement de clan sauvegardé.</p>';
+                return;
+            }
+
+            for (const [index, loadout] of loadouts.entries()) {
+                const loadoutDiv = document.createElement('div');
+                loadoutDiv.className = 'loadout-item';
+
+                let iconsHtml = '<div class="loadout-item-icons">';
+                for (const hash of (loadout.itemHashes || [])) {
+                    const def = await getDefinition('DestinyInventoryItemDefinition', hash);
+                    if (def) {
+                        iconsHtml += `<img src="https://www.bungie.net${def.displayProperties.icon}" title="${def.displayProperties.name}">`;
+                    }
+                }
+                iconsHtml += '</div>';
+
+                loadoutDiv.innerHTML = `
+                    <div>
+                        <span class="loadout-item-name">${loadout.name}</span>
+                        ${iconsHtml}
+                    </div>
+                    <div class="loadout-actions" style="flex-direction: column; gap: 5px; align-items: flex-end;">
+                        <button class="action-button equip-btn" data-index="${index}" style="width: 100px;">Équiper</button>
+                        <button class="action-button delete-btn" data-index="${index}" style="width: 100px; background-color: #c0392b;">Supprimer</button>
+                    </div>
+                `;
+
+                const equipButton = loadoutDiv.querySelector('.equip-btn');
+                equipButton.addEventListener('click', async () => {
+                    equipButton.disabled = true;
+                    equipButton.textContent = '...';
+                    await equipLoadout(loadout);
+                    equipButton.disabled = false;
+                    equipButton.textContent = 'Équiper';
+                });
+
+                const deleteButton = loadoutDiv.querySelector('.delete-btn');
+                deleteButton.addEventListener('click', () => {
+                    if (confirm("Êtes-vous sûr de vouloir supprimer cet équipement de clan ?")) {
+                        loadouts.splice(index, 1);
+                        localStorage.setItem('destinyClanLoadouts', JSON.stringify(loadouts));
+                        displayClanLoadouts();
+                    }
+                });
+
+                clanLoadoutsList.appendChild(loadoutDiv);
+            }
+        }
+
         async function equipLoadout(loadout) {
             if (!loadout.characterId) {
                 alert("Impossible d'équiper : ce build n'est assigné à aucun personnage. Veuillez le recréer.");
@@ -1888,7 +1963,7 @@
             }
         }
 
-        function openLoadoutBuilder() {
+        function openLoadoutBuilder(type = 'personal') {
             if (!fullProfileData) {
                 alert("Les données du profil ne sont pas encore chargées.");
                 return;
@@ -1896,6 +1971,7 @@
             currentLoadoutBuilder = {};
             document.getElementById('newLoadoutName').value = '';
             updateSelectedLoadoutItems();
+            saveNewLoadoutBtn.dataset.loadoutType = type;
 
             const allItems = [
                 ...fullProfileData.profileInventory.data.items,
@@ -1965,7 +2041,7 @@
             }
         }
 
-        async function importLoadoutFromCode(code) {
+        async function importLoadoutFromCode(code, type = 'personal') {
             try {
                 const itemHashes = JSON.parse(atob(code));
                 const allItems = [
@@ -1991,9 +2067,10 @@
                 }
 
                 currentLoadoutBuilder = newLoadout;
-                openLoadoutBuilder();
+                openLoadoutBuilder(type);
                 updateSelectedLoadoutItems();
-                document.getElementById('newLoadoutName').value = "Équipement importé";
+                const typeText = type === 'clan' ? 'de clan' : '';
+                document.getElementById('newLoadoutName').value = `Équipement ${typeText} importé`;
 
             } catch (error) {
                 alert("Code d'équipement invalide ou corrompu.");
