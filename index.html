@@ -711,14 +711,16 @@
                 const membershipType = destinyProfile.membershipType;
 
                 const components = [
-                    100, // Profiles
-                    200, // Characters
-                    203, // CharacterRenderData
-                    205, // CharacterEquipment
-                    300, // ItemInstances
-                    304, // ItemStats
-                    305, // ItemSockets
-                    1200 // CharacterCustomization
+                    100,  // Profiles
+                    102,  // ProfileInventories (Vault)
+                    200,  // Characters
+                    201,  // CharacterInventories
+                    203,  // CharacterRenderData
+                    205,  // CharacterEquipment
+                    300,  // ItemInstances
+                    304,  // ItemStats
+                    305,  // ItemSockets
+                    1200  // CharacterCustomization
                 ].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
