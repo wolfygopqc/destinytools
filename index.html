@@ -65,6 +65,20 @@
             background-color: var(--text-color);
             color: var(--bg-color);
         }
+        #refreshBtn {
+            background: none;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        #refreshBtn:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
 
         .login-container, .content-container {
             background: var(--primary-color);
@@ -333,13 +347,20 @@
             font-weight: bold;
             text-shadow: 1px 1px 2px #000;
         }
+        .item-quantity {
+            position: absolute;
+            bottom: 2px;
+            left: 4px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
         .inventory-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 8px;
         }
         #vaultGrid {
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
         }
         .empty-slot {
             width: 64px;
@@ -397,6 +418,7 @@
     <header>
         <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
+        <button id="refreshBtn" class="hidden">Rafraîchir</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
     </header>
 
@@ -457,6 +479,7 @@
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
         const vaultGrid = document.getElementById('vaultGrid');
         const errorDisplayDiv = document.createElement('div');
+        const refreshBtn = document.getElementById('refreshBtn');
         const perkDefinitionsCache = {};
         let currentUserInfo = null;
         let refreshIntervalId = null;
@@ -496,6 +519,16 @@
             window.location.reload();
         });
 
+        refreshBtn.addEventListener('click', () => {
+            const session = getSessionFromCache();
+            if (session) {
+                loadingDiv.classList.remove('hidden');
+                profileDataDiv.classList.add('hidden');
+                vaultDisplayContainer.classList.add('hidden');
+                getProfileDataWithToken(session.accessToken, session.membershipId);
+            }
+        });
+
         itemDetailCloseBtn.addEventListener('click', () => {
             itemDetailModal.classList.remove('visible');
         });
@@ -506,6 +539,7 @@
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
+            refreshBtn.classList.remove('hidden');
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -747,7 +781,7 @@
             return card;
         }
 
-        function createItemElement(item, itemInstances, data, ownerId) {
+        function createItemElement(item, itemInstances, data, characterId) {
             const instance = itemInstances[item.itemInstanceId];
             const power = instance?.primaryStat?.value || '';            
             
@@ -758,11 +792,15 @@
             getDefinition('DestinyInventoryItemDefinition', item.itemHash).then(def => {
                 if (def) img.src = `https://www.bungie.net${def.displayProperties.icon}`;
             });
-            itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
+            let quantityHtml = '';
+            if (item.quantity > 1) {
+                quantityHtml = `<span class="item-quantity">${item.quantity}</span>`;
+            }
+            itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>${quantityHtml}`;
             itemElement.prepend(img);
             itemElement.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
-                showItemDetailModal(item, data, ownerId); 
+                showItemDetailModal(item, data, characterId); 
             });
             return itemElement;
         }
