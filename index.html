@@ -621,6 +621,16 @@
                 </div>
             </div>
         </div>
+
+        <div id="memberProfileModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 1400px;">
+                <span id="memberProfileModalCloseBtn" class="modal-close">&times;</span>
+                <h2 id="memberProfileName">Profil du Membre</h2>
+                <div id="memberProfileContent">
+                    <div class="loader"></div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -650,6 +660,8 @@
         const groupModalCloseBtn = document.getElementById('groupModalCloseBtn');
         const createGroupBtn = document.getElementById('createGroupBtn');
         const leaveGroupBtn = document.getElementById('leaveGroupBtn');
+        const memberProfileModal = document.getElementById('memberProfileModal');
+        const memberProfileModalCloseBtn = document.getElementById('memberProfileModalCloseBtn');
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
         const vaultGrid = document.getElementById('vaultGrid');
         const vendorDisplayContainer = document.getElementById('vendorDisplayContainer');
@@ -721,10 +733,20 @@
             groupModal.classList.remove('visible');
         });
 
+        memberProfileModalCloseBtn.addEventListener('click', () => {
+            memberProfileModal.classList.remove('visible');
+            document.getElementById('memberProfileContent').innerHTML = '<div class="loader"></div>';
+        });
+
         createGroupBtn.addEventListener('click', () => {
             const groupNameInput = document.getElementById('createGroupName');
-            const groupName = groupNameInput.value.trim();
-            if (groupName && currentUserInfo) {
+            let groupName = groupNameInput.value.trim();
+
+            if (currentUserInfo) {
+                if (!groupName) {
+                    groupName = `Escouade de ${currentUserInfo.bungieGlobalDisplayName}`;
+                }
+
                 const group = {
                     name: groupName,
                     owner: currentUserInfo.bungieGlobalDisplayName,
@@ -732,6 +754,7 @@
                 };
                 saveGroupToCache(group);
                 updateGroupModal(group);
+                groupNameInput.value = '';
             }
         });
 
@@ -1342,25 +1365,144 @@
                 groupNameTitle.textContent = group.name;
                 groupMembersDiv.innerHTML = '';
                 group.members.forEach(member => {
-                    const memberDiv = document.createElement('div');
-                    memberDiv.style.display = 'flex';
-                    memberDiv.style.justifyContent = 'space-between';
-                    memberDiv.style.alignItems = 'center';
-                    memberDiv.style.padding = '8px';
-                    memberDiv.style.borderBottom = '1px solid var(--border-color)';
-                    memberDiv.innerHTML = `
-                        <span>${member.bungieGlobalDisplayName}#${member.bungieGlobalDisplayNameCode}</span>
-                        <div>
-                            <button class="action-button" style="width:auto; margin-right: 5px; background-color: #3498db;">Voir Profil</button>
-                            ${currentUserInfo.bungieGlobalDisplayName === group.owner && member.bungieGlobalDisplayName !== group.owner ? '<button class="action-button" style="width:auto; background-color: #e74c3c;">Retirer</button>' : ''}
-                        </div>
-                    `;
+                    const memberDiv = createGroupMemberElement(member, group);
                     groupMembersDiv.appendChild(memberDiv);
                 });
+
+                const isOwner = currentUserInfo.bungieGlobalDisplayName === group.owner;
+                if (isOwner) {
+                    const settingsDiv = document.createElement('div');
+                    settingsDiv.innerHTML = `
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                            <h4>Paramètres du groupe</h4>
+                            <input type="text" id="renameGroupName" placeholder="Nouveau nom" value="${group.name}" style="padding: 8px; margin-right: 10px;">
+                            <button id="renameGroupBtn" class="action-button" style="width: auto;">Renommer</button>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <input type="text" id="inviteMemberName" placeholder="Bungie Name#1234" style="padding: 8px; margin-right: 10px;">
+                            <button id="inviteMemberBtn" class="action-button" style="width: auto;">Ajouter un membre</button>
+                        </div>
+                    `;
+                    groupMembersDiv.appendChild(settingsDiv);
+
+                    document.getElementById('renameGroupBtn').addEventListener('click', () => {
+                        const newName = document.getElementById('renameGroupName').value.trim();
+                        if (newName) {
+                            group.name = newName;
+                            saveGroupToCache(group);
+                            updateGroupModal(group);
+                        }
+                    });
+
+                    document.getElementById('inviteMemberBtn').addEventListener('click', async () => {
+                        const inviteInput = document.getElementById('inviteMemberName');
+                        const bungieNameFull = inviteInput.value.trim();
+                        const parts = bungieNameFull.split('#');
+                        if (parts.length !== 2) {
+                            alert("Veuillez entrer un nom au format 'Nom#1234'.");
+                            return;
+                        }
+                        const displayName = parts[0];
+                        const displayNameCode = parts[1];
+
+                        try {
+                            const session = getSessionFromCache();
+                            const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/SearchDestinyPlayerByBungieName/-1/`, {
+                                method: 'POST',
+                                headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ displayName, displayNameCode })
+                            });
+                            const searchData = await searchResponse.json();
+                            if (searchData.ErrorCode === 1 && searchData.Response.length > 0) {
+                                const newMember = searchData.Response[0];
+                                if (!group.members.some(m => m.membershipId === newMember.membershipId)) {
+                                    group.members.push(newMember);
+                                    saveGroupToCache(group);
+                                    updateGroupModal(group);
+                                    inviteInput.value = '';
+                                } else {
+                                    alert("Ce membre est déjà dans le groupe.");
+                                }
+                            } else {
+                                alert("Joueur introuvable.");
+                            }
+                        } catch (error) {
+                            console.error("Erreur lors de la recherche du joueur:", error);
+                            alert("Une erreur est survenue lors de la recherche.");
+                        }
+                    });
+                }
+
             } else {
                 noGroupView.classList.remove('hidden');
                 inGroupView.classList.add('hidden');
                 groupNameTitle.textContent = 'Gestion du Groupe';
+            }
+        }
+
+        function createGroupMemberElement(member, group) {
+            const memberDiv = document.createElement('div');
+            memberDiv.style.display = 'flex';
+            memberDiv.style.justifyContent = 'space-between';
+            memberDiv.style.alignItems = 'center';
+            memberDiv.style.padding = '8px';
+            memberDiv.style.borderBottom = '1px solid var(--border-color)';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `${member.bungieGlobalDisplayName}#${member.bungieGlobalDisplayNameCode}`;
+            memberDiv.appendChild(nameSpan);
+
+            const buttonsDiv = document.createElement('div');
+            const viewProfileBtn = document.createElement('button');
+            viewProfileBtn.textContent = 'Voir Profil';
+            viewProfileBtn.className = 'action-button';
+            viewProfileBtn.style = 'width:auto; margin-right: 5px; background-color: #3498db;';
+            viewProfileBtn.onclick = () => showMemberProfile(member.membershipType, member.membershipId);
+            buttonsDiv.appendChild(viewProfileBtn);
+
+            if (currentUserInfo.bungieGlobalDisplayName === group.owner && member.bungieGlobalDisplayName !== group.owner) {
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Retirer';
+                removeBtn.className = 'action-button';
+                removeBtn.style = 'width:auto; background-color: #e74c3c;';
+                removeBtn.onclick = () => {
+                    group.members = group.members.filter(m => m.membershipId !== member.membershipId);
+                    saveGroupToCache(group);
+                    updateGroupModal(group);
+                };
+                buttonsDiv.appendChild(removeBtn);
+            }
+            memberDiv.appendChild(buttonsDiv);
+            return memberDiv;
+        }
+
+        async function showMemberProfile(membershipType, membershipId) {
+            memberProfileModal.classList.add('visible');
+            const memberProfileContent = document.getElementById('memberProfileContent');
+            const memberProfileName = document.getElementById('memberProfileName');
+            
+            try {
+                const session = getSessionFromCache();
+                const components = [100, 200, 201, 202, 203, 205, 300, 302, 304, 305, 1200].join(',');
+                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/?components=${components}`, {
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
+                });
+                const profileData = await profileResponse.json();
+                if (profileData.ErrorCode !== 1) throw new Error(profileData.Message);
+
+                const response = profileData.Response;
+                memberProfileName.textContent = `Profil de ${response.profile.data.userInfo.bungieGlobalDisplayName}`;
+                memberProfileContent.innerHTML = '';
+
+                for (const characterId of response.profile.data.characterIds) {
+                    const characterCard = createCharacterCard(characterId, response, membershipId, membershipType);
+                    if (characterCard) {
+                        memberProfileContent.appendChild(characterCard);
+                    }
+                }
+
+            } catch (error) {
+                memberProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du profil du membre : ${error.message}</p>`;
             }
         }
 
