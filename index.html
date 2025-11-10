@@ -431,6 +431,11 @@
         </div>
 
         <div id="main-layout" class="hidden">
+            <div id="vaultDisplayContainer" class="content-container hidden">
+                <h2>Votre Coffre</h2>
+                <div id="vaultGrid" class="inventory-grid"></div>
+            </div>
+
             <div id="contentContainer" class="content-container">
                 <div id="loading" class="hidden">
                     <div class="loader"></div>
@@ -442,11 +447,6 @@
                     <h2>Vos Personnages</h2>
                     <div id="characters"></div>
                 </div>
-            </div>
-
-            <div id="vaultDisplayContainer" class="content-container hidden">
-                <h2>Votre Coffre</h2>
-                <div id="vaultGrid" class="inventory-grid"></div>
             </div>
         </div>
 
@@ -467,8 +467,8 @@
         const style = document.createElement('style');
         style.innerHTML = `
             #main-layout { display: flex; flex-wrap: wrap; gap: 20px; width: 100%; max-width: 1800px; justify-content: center; }
-            #contentContainer { flex: 2; min-width: 500px; }
-            #vaultDisplayContainer { flex: 1; min-width: 300px; }
+            #contentContainer { flex: 1; min-width: 500px; }
+            #vaultDisplayContainer { flex: 1; min-width: 500px; }
         `;
         document.head.appendChild(style);
 
