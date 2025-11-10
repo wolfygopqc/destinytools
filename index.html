@@ -139,7 +139,7 @@
         }
         #characters {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 1fr;
             gap: 20px;
         }
         .character-card {
@@ -159,7 +159,7 @@
         .character-render {
             flex-shrink: 0;
             width: 150px;
-            height: 320px; /* Adjust height as needed */
+            height: 320px;
             background-size: cover;
             background-position: center;
             border-left: 1px solid var(--border-color);
@@ -326,12 +326,11 @@
             height: 48px;
             flex-shrink: 0;
         }
-        /* Rarity Colors */
-        .rarity-6 { border-left-color: #ceae33; } /* Exotic */
-        .rarity-5 { border-left-color: #522f65; } /* Legendary */
-        .rarity-4 { border-left-color: #5076a3; } /* Rare */
-        .rarity-3 { border-left-color: #366f42; } /* Uncommon */
-        .rarity-2 { border-left-color: #c3bcb4; } /* Common */
+        .rarity-6 { border-left-color: #ceae33; }
+        .rarity-5 { border-left-color: #522f65; }
+        .rarity-4 { border-left-color: #5076a3; }
+        .rarity-3 { border-left-color: #366f42; }
+        .rarity-2 { border-left-color: #c3bcb4; }
 
         #itemDetailIcon.rarity-border-6 { border-color: #ceae33; }
         #itemDetailIcon.rarity-border-5 { border-color: #522f65; }
@@ -367,16 +366,6 @@
         }
         .stat-value-text { width: 30px; text-align: left; font-weight: bold; }
 
-        .inventory-section {
-            margin-bottom: 20px;
-        }
-        .equipped-items {
-            margin-bottom: 10px;
-        }
-        .perk-item img {
-            width: 48px;
-            height: 48px;
-        }
         .inventory-section {
             margin-bottom: 20px;
         }
@@ -762,7 +751,6 @@
             if (vaultInventory.length > 0) {
                 vaultGrid.innerHTML = '';
                 
-                
                 vaultInventory.sort((a, b) => a.bucketHash - b.bucketHash);
 
                 vaultInventory.forEach(item => {
@@ -770,7 +758,6 @@
                     vaultGrid.appendChild(itemElement);
                 });
 
-                
                 const remainder = vaultInventory.length % 8;
                 if (remainder > 0) {
                     const emptySlotsToAdd = 8 - remainder;
@@ -817,39 +804,30 @@
 
                     let statsHtml = '<div class="stats-grid">';
                     const stats = char.stats;
-                    const statOrder = {
-                        '2996146975': 'Mobilité',
-                        '392767087': 'Résilience',
-                        '1943323491': 'Récupération',
-                        '1735777505': 'Discipline',
-                        '144602215': 'Intelligence',
-                        '4244567218': 'Force'
-                    };
-
-                    for (const hash in statOrder) {
+                    
+                    for (const hash in statDefinitions) {
+                        const statInfo = statDefinitions[hash];
                         statsHtml += `
-                            <div class="stat-item">
+                            <div class="stat-item" title="${statInfo.long}">
                                 <span class="stat-value">${stats[hash] || 0}</span>
-                                <span class="stat-label">${statOrder[hash]}</span>
+                                <span class="stat-label">${statInfo.short}</span>
                             </div>`;
                     }
                     statsHtml += '</div>';
 
-                    const characterInventory = data.characterInventories?.data?.[characterId]?.items || [];
-                    const equipmentGrid = createEquippedGrid(characterInventory, characterId);
+                    const equipmentGrid = createEquippedGrid(characterId);
 
                     card.innerHTML = `
-                        <h3>${classMap[char.classType] || 'Inconnue'}</h3>
-                        <p><strong>Lumière :</strong> ${char.light}</p>
-                        <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
-                        ${statsHtml}
+                        <div class="character-info">
+                            <h3>${classMap[char.classType] || 'Inconnue'}</h3>
+                            <p><strong>Lumière :</strong> ${char.light}</p>
+                            <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
+                            ${statsHtml}
+                        </div>
+                        <div class="character-render" style="background-image: url(https://www.bungie.net${char.emblemPath.replace('emblems', 'character_backdrops')})"></div>
                     `;
-                    card.appendChild(equipmentGrid);
+                    card.querySelector('.character-info').appendChild(equipmentGrid);
                     
-                    card.addEventListener('click', () => {
-                        showInventoryModal(characterId, data);
-                    });
-
                     const backgroundUrl = char.emblemBackgroundPath 
                         ? `https://www.bungie.net${char.emblemBackgroundPath}` 
                         : 'https://www.bungie.net/common/destiny2_content/icons/27a51851464f9e07347a77c83958b9d4.jpg';
@@ -940,7 +918,10 @@
             const itemElement = document.createElement('div');
             itemElement.className = 'item-slot';
             const img = document.createElement('img');
-            img.className = 'item-icon';            
+            img.className = 'item-icon';
+            getDefinition('DestinyInventoryItemDefinition', item.itemHash).then(def => {
+                if (def) img.src = `https://www.bungie.net${def.displayProperties.icon}`;
+            });
             itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>`;
             itemElement.prepend(img);
             itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
@@ -971,7 +952,7 @@
 
                     for (const statDef of statDefs.filter(def => def && def.displayProperties.name)) {
                         const statValue = weaponStats[statDef.hash].value;
-                        if (statDef.displayProperties.name && statValue > 0) { // Only show relevant stats
+                        if (statDef.displayProperties.name && statValue > 0) {
                             bodyHtml += `
                                 <div class="stat-bar-container">
                                     <div class="stat-info">${statDef.displayProperties.name}</div>
