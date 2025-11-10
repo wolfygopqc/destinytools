@@ -424,6 +424,10 @@
             background-color: #75b0f8;
             transform: translateY(-2px);
         }
+        .action-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
 
         .quests-toggle-button {
             background-color: rgba(0,0,0,0.3);
@@ -1595,7 +1599,7 @@
             displayLoadouts();
         }
 
-        function displayLoadouts() {
+        async function displayLoadouts() {
             let loadouts = JSON.parse(localStorage.getItem('destinyLoadouts')) || [];
             loadoutsList.innerHTML = '';
 
@@ -1604,7 +1608,7 @@
                 return;
             }
 
-            loadouts.forEach(async (loadout, index) => {
+            for (const [index, loadout] of loadouts.entries()) {
                 const loadoutDiv = document.createElement('div');
                 loadoutDiv.className = 'loadout-item';
 
@@ -1624,58 +1628,30 @@
                     </div>
                     <div class="loadout-actions" style="flex-direction: column; gap: 5px; align-items: flex-end;">
                         <button class="action-button equip-btn" data-index="${index}" style="width: 100px;">Équiper</button>
-                        <button class="action-button share-btn" data-index="${index}" style="width: 100px; background-color: #2980b9;">Partager</button>
                         <button class="action-button delete-btn" data-index="${index}" style="width: 100px; background-color: #c0392b;">Supprimer</button>
                     </div>
                 `;
-                loadoutsList.appendChild(loadoutDiv);
-            });
 
-            loadoutsList.querySelectorAll('.equip-btn').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    const index = e.target.dataset.index;
-                    const loadout = loadouts[index];
+                const equipButton = loadoutDiv.querySelector('.equip-btn');
+                equipButton.addEventListener('click', async () => {
+                    equipButton.disabled = true;
+                    equipButton.textContent = '...';
                     await equipLoadout(loadout);
+                    equipButton.disabled = false;
+                    equipButton.textContent = 'Équiper';
                 });
-            });
 
-            loadoutsList.querySelectorAll('.share-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const index = e.target.dataset.index;
-                    const loadout = loadouts[index];
-                    const shareCode = btoa(JSON.stringify(loadout.itemHashes));
-                    navigator.clipboard.writeText(shareCode).then(() => {
-                        const originalText = button.textContent;
-                        const originalBg = button.style.backgroundColor;
-                        button.textContent = 'Copié !';
-                        button.style.backgroundColor = '#27ae60';
-                        setTimeout(() => {
-                            button.textContent = originalText;
-                            button.style.backgroundColor = originalBg;
-                        }, 1500);
-                    }).catch(err => {
-                        console.error('Erreur de copie dans le presse-papiers:', err);
-                        const tempInput = document.createElement('textarea');
-                        tempInput.value = shareCode;
-                        document.body.appendChild(tempInput);
-                        tempInput.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(tempInput);
-                        alert('Impossible de copier automatiquement. Le code a été sélectionné, appuyez sur Ctrl+C (ou Cmd+C) pour copier.');
-                    });
-                });
-            });
-
-            loadoutsList.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
+                const deleteButton = loadoutDiv.querySelector('.delete-btn');
+                deleteButton.addEventListener('click', () => {
                     if (confirm("Êtes-vous sûr de vouloir supprimer cet équipement ?")) {
-                        const index = e.target.dataset.index;
                         loadouts.splice(index, 1);
                         localStorage.setItem('destinyLoadouts', JSON.stringify(loadouts));
                         displayLoadouts();
                     }
                 });
-            });
+
+                loadoutsList.appendChild(loadoutDiv);
+            }
         }
 
         async function equipLoadout(loadout) {
