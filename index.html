@@ -750,7 +750,6 @@
             ];
 
             let statsHtml = '<div class="stats-grid">';
-            for (const hash in statDefinitions) {
             for (const hash of statOrder) {
                 const statInfo = statDefinitions[hash];
                 statsHtml += `
