@@ -706,7 +706,6 @@
                         grid.appendChild(itemElement);
                     });
 
-                    // Add empty slots to fill the row
                     const remainder = items.length % 8;
                     if (remainder > 0) {
                         const emptySlotsToAdd = 8 - remainder;
@@ -739,17 +738,6 @@
 
                 let gridHtml = '<div class="inventory-grid">';
                 equippedItems.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId];
-                    const power = instance?.primaryStat?.value || '';
-                    const iconPath = item.overrideStyleItemHash ? '/common/destiny2_content/icons/9745743228a4332936a89b200b583dae.png' : (item.icon || '/common/destiny2_content/icons/destiny_bgs/nova_2.png');
-                    
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'item-slot';
-                    itemElement.innerHTML = `
-                        <img src="https://www.bungie.net${iconPath}" class="item-icon" title="${item.tooltipNotification || ''}">
-                        <span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>
-                    `;
-                    itemElement.addEventListener('click', (e) => { e.stopPropagation(); showItemDetailModal(item, data, characterId); });
                     const itemElement = createItemElement(item, itemInstances, data, characterId);
                     gridHtml += itemElement.outerHTML;
                 });
@@ -866,7 +854,6 @@
                 grid.className = isEquippedView ? 'equipped-items' : 'inventory-grid';
 
                 items.forEach(item => {
-                    const instance = itemInstances[item.itemInstanceId];
                     const itemElement = createItemElement(item, itemInstances, data, characterId);
                     grid.appendChild(itemElement);
                 });
