@@ -54,6 +54,7 @@
         main {
             width: 100%;
             max-width: 1200px;
+            margin-bottom: 20px;
         }
         #logoutBtn {
             background: none;
@@ -66,6 +67,20 @@
         }
         #logoutBtn:hover {
             background-color: var(--text-color);
+            color: var(--bg-color);
+        }
+        #groupBtn {
+            background: none;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            margin-top: 10px;
+            margin-left: 10px;
+        }
+        #groupBtn:hover {
+            background-color: var(--accent-color);
             color: var(--bg-color);
         }
         #refreshBtn {
@@ -166,9 +181,8 @@
             height: 320px;
             border-left: 1px solid var(--border-color);
             padding-left: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background-size: cover;
+            background-position: center;
         }
 
         .character-card h3 {
@@ -536,6 +550,7 @@
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
         <button id="refreshBtn" class="hidden">Rafraîchir</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
+        <button id="groupBtn" class="hidden">Gérer le Groupe</button>
     </header>
 
     <main>
@@ -587,10 +602,26 @@
                 <div id="itemDetailBody" class="item-detail-body"></div>
             </div>
         </div>
-    </main>
 
-    <script src="https://www.bungie.net/sharedbundle/spasm"></script>
-    <script src="SpasmRenderer.js"></script>
+        <div id="groupModal" class="modal-overlay">
+            <div class="modal-content">
+                <span id="groupModalCloseBtn" class="modal-close">&times;</span>
+                <h2 id="groupName">Gestion du Groupe</h2>
+                <div id="groupContent">
+                    <div id="noGroupView">
+                        <p>Vous n'êtes actuellement dans aucun groupe.</p>
+                        <input type="text" id="createGroupName" placeholder="Nom du groupe" style="width: 60%; padding: 8px; margin-right: 10px;">
+                        <button id="createGroupBtn" class="action-button" style="width: auto;">Créer un Groupe</button>
+                    </div>
+                    <div id="inGroupView" class="hidden">
+                        <h3>Membres</h3>
+                        <div id="groupMembers"></div>
+                        <button id="leaveGroupBtn" class="action-button" style="background-color: #c0392b;">Quitter / Dissoudre</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 
     <script>
         const BUNGIE_CLIENT_ID = "51007";
@@ -614,6 +645,11 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         let currentOpenItem = null;
+        const groupBtn = document.getElementById('groupBtn');
+        const groupModal = document.getElementById('groupModal');
+        const groupModalCloseBtn = document.getElementById('groupModalCloseBtn');
+        const createGroupBtn = document.getElementById('createGroupBtn');
+        const leaveGroupBtn = document.getElementById('leaveGroupBtn');
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
         const vaultGrid = document.getElementById('vaultGrid');
         const vendorDisplayContainer = document.getElementById('vendorDisplayContainer');
@@ -621,6 +657,7 @@
         const errorDisplayDiv = document.createElement('div');
         const perkDefinitionsCache = {};
         const refreshBtn = document.getElementById('refreshBtn');
+        let currentUserInfo = null;
         let refreshIntervalId = null;
 
         loginBtn.addEventListener('click', () => {
@@ -676,6 +713,33 @@
             itemDetailModal.classList.remove('visible');
         });
 
+        groupBtn.addEventListener('click', () => {
+            groupModal.classList.add('visible');
+        });
+
+        groupModalCloseBtn.addEventListener('click', () => {
+            groupModal.classList.remove('visible');
+        });
+
+        createGroupBtn.addEventListener('click', () => {
+            const groupNameInput = document.getElementById('createGroupName');
+            const groupName = groupNameInput.value.trim();
+            if (groupName && currentUserInfo) {
+                const group = {
+                    name: groupName,
+                    owner: currentUserInfo.bungieGlobalDisplayName,
+                    members: [currentUserInfo]
+                };
+                saveGroupToCache(group);
+                updateGroupModal(group);
+            }
+        });
+
+        leaveGroupBtn.addEventListener('click', () => {
+            clearGroupFromCache();
+            updateGroupModal(null);
+        });
+
         function showContent() {
             loginContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
@@ -683,6 +747,8 @@
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
             refreshBtn.classList.remove('hidden');
+            groupBtn.classList.remove('hidden');
+            updateGroupModal(getGroupFromCache());
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -836,6 +902,7 @@
             profileDataDiv.classList.remove('hidden');
 
             const profileInfo = data.profile.data.userInfo;
+            currentUserInfo = { bungieGlobalDisplayName: profileInfo.bungieGlobalDisplayName, bungieGlobalDisplayNameCode: profileInfo.bungieGlobalDisplayNameCode, membershipId: profileInfo.membershipId, membershipType: profileInfo.membershipType };
             userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
 
             charactersDiv.innerHTML = '';
@@ -928,6 +995,13 @@
                     equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
 
+            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`;
+            const renderData = data.characterRenderData?.data?.[characterId];
+            if (renderData && renderData.peerView) {
+                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
+                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/Character/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
+            }
+
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
@@ -937,9 +1011,7 @@
                     <div class="progressions-grid"></div>
                     <div class="quests-grid"></div>
                 </div>
-                <div class="character-render">
-                    <canvas id="render-canvas-${characterId}" width="150" height="320"></canvas>
-                </div>
+                <div class="character-render" style="background-image: url('${renderImageUrl}')"></div>
             `;
             card.querySelector('.character-info').appendChild(equipmentGrid);
 
@@ -953,14 +1025,6 @@
             if (data.characterInventories?.data?.[characterId]?.items && data.itemComponents?.objectives?.data) {
                 displayQuestsAndBounties(questsGrid, data.characterInventories.data[characterId].items, data.itemComponents.objectives.data);
             }
-
-            setTimeout(() => {
-                const canvas = document.getElementById(`render-canvas-${characterId}`);
-                const renderData = data.characterRenderData?.data?.[characterId];
-                if (canvas && renderData) {
-                    new SpasmRenderer(canvas, char, renderData, 'https://www.bungie.net');
-                }
-            }, 0);
 
             const backgroundUrl = char.emblemBackgroundPath 
                 ? `https://www.bungie.net${char.emblemBackgroundPath}` 
@@ -1251,6 +1315,53 @@
                 '2762206170': 'Ada-1'
             };
 
+        }
+
+        function saveGroupToCache(group) {
+            localStorage.setItem('destinyGroup', JSON.stringify(group));
+        }
+
+        function getGroupFromCache() {
+            const groupStr = localStorage.getItem('destinyGroup');
+            return groupStr ? JSON.parse(groupStr) : null;
+        }
+
+        function clearGroupFromCache() {
+            localStorage.removeItem('destinyGroup');
+        }
+
+        function updateGroupModal(group) {
+            const noGroupView = document.getElementById('noGroupView');
+            const inGroupView = document.getElementById('inGroupView');
+            const groupNameTitle = document.getElementById('groupName');
+            const groupMembersDiv = document.getElementById('groupMembers');
+
+            if (group) {
+                noGroupView.classList.add('hidden');
+                inGroupView.classList.remove('hidden');
+                groupNameTitle.textContent = group.name;
+                groupMembersDiv.innerHTML = '';
+                group.members.forEach(member => {
+                    const memberDiv = document.createElement('div');
+                    memberDiv.style.display = 'flex';
+                    memberDiv.style.justifyContent = 'space-between';
+                    memberDiv.style.alignItems = 'center';
+                    memberDiv.style.padding = '8px';
+                    memberDiv.style.borderBottom = '1px solid var(--border-color)';
+                    memberDiv.innerHTML = `
+                        <span>${member.bungieGlobalDisplayName}#${member.bungieGlobalDisplayNameCode}</span>
+                        <div>
+                            <button class="action-button" style="width:auto; margin-right: 5px; background-color: #3498db;">Voir Profil</button>
+                            ${currentUserInfo.bungieGlobalDisplayName === group.owner && member.bungieGlobalDisplayName !== group.owner ? '<button class="action-button" style="width:auto; background-color: #e74c3c;">Retirer</button>' : ''}
+                        </div>
+                    `;
+                    groupMembersDiv.appendChild(memberDiv);
+                });
+            } else {
+                noGroupView.classList.remove('hidden');
+                inGroupView.classList.add('hidden');
+                groupNameTitle.textContent = 'Gestion du Groupe';
+            }
         }
 
     </script>
