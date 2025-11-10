@@ -87,6 +87,7 @@
             border: 1px solid var(--border-color);
             clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
             text-align: center;
+            margin-bottom: 20px;
         }
 
         .login-container {
@@ -532,6 +533,34 @@
             gap: 5px;
             align-items: center;
         }
+
+        .loadout-save-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .loadout-save-section input { padding: 8px; }
+
+        #loadoutsList {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .loadout-item {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .loadout-item-name { font-weight: bold; }
+        .loadout-actions button {
+            margin-left: 10px;
+            padding: 5px 10px;
+        }
+
     </style>
 </head>
 
@@ -604,6 +633,11 @@
             <div id="vendorsList"></div>
         </div>
 
+        <div id="loadoutsContainer" class="content-container hidden">
+            <h2>Équipements (Loadouts)</h2>
+            <div id="loadoutsList"></div>
+        </div>
+
         <div id="playerProfileModal" class="modal-overlay">
             <div class="modal-content" style="max-width: 1400px;">
                 <span id="playerProfileModalCloseBtn" class="modal-close">&times;</span>
@@ -641,6 +675,8 @@
         const questsList = document.getElementById('questsList');
         const vendorsContainer = document.getElementById('vendorsContainer');
         const vendorsList = document.getElementById('vendorsList');
+        const loadoutsContainer = document.getElementById('loadoutsContainer');
+        const loadoutsList = document.getElementById('loadoutsList');
         const playerProfileModalCloseBtn = document.getElementById('playerProfileModalCloseBtn');
 
         const errorDisplayDiv = document.createElement('div');
@@ -657,6 +693,7 @@
         window.onload = () => {
             const session = getSessionFromCache();
             displaySearchHistory();
+            displayLoadouts();
             if (session) {
                 showContent();
                 if (Date.now() > session.accessTokenExpiresAt) {
@@ -817,6 +854,7 @@
             communityContainer.classList.remove('hidden');
             questsContainer.classList.remove('hidden');
             vendorsContainer.classList.remove('hidden');
+            loadoutsContainer.classList.remove('hidden');
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -982,6 +1020,7 @@
                 communityContainer.classList.remove('hidden');
                 questsContainer.classList.remove('hidden');
                 vendorsContainer.classList.remove('hidden');
+                loadoutsContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -1217,6 +1256,26 @@
             card.style.backgroundSize = 'cover';
             card.style.backgroundPosition = 'center';
 
+            const loadoutSaveSection = document.createElement('div');
+            loadoutSaveSection.className = 'loadout-save-section';
+            loadoutSaveSection.innerHTML = `
+                <input type="text" placeholder="Nom de l'équipement" class="loadout-name-input">
+                <button class="action-button save-loadout-btn" style="width: auto;">Sauvegarder</button>
+            `;
+            loadoutSaveSection.querySelector('.save-loadout-btn').addEventListener('click', (e) => {
+                const input = e.target.previousElementSibling;
+                const loadoutName = input.value.trim();
+                if (loadoutName) {
+                    saveLoadout(characterId, loadoutName, data);
+                    input.value = '';
+                    alert(`Équipement "${loadoutName}" sauvegardé !`);
+                } else {
+                    alert("Veuillez donner un nom à votre équipement.");
+                }
+            });
+
+            card.appendChild(loadoutSaveSection);
+
             return card;
         }
 
@@ -1369,6 +1428,93 @@
                 playerDiv.onclick = () => showPlayerProfile(player.membershipType, player.membershipId, player.displayName, player.displayCode);
                 historyListDiv.appendChild(playerDiv);
             });
+        }
+
+        function saveLoadout(characterId, loadoutName, data) {
+            const equippedItems = data.characterEquipment.data[characterId].items;
+            const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
+            
+            const itemIds = equippedItems
+                .filter(item => relevantSlots.includes(item.bucketHash))
+                .map(item => item.itemInstanceId);
+
+            const newLoadout = {
+                name: loadoutName,
+                characterId: characterId,
+                itemInstanceIds: itemIds
+            };
+
+            let loadouts = JSON.parse(localStorage.getItem('destinyLoadouts')) || [];
+            loadouts.push(newLoadout);
+            localStorage.setItem('destinyLoadouts', JSON.stringify(loadouts));
+            displayLoadouts();
+        }
+
+        function displayLoadouts() {
+            let loadouts = JSON.parse(localStorage.getItem('destinyLoadouts')) || [];
+            loadoutsList.innerHTML = '';
+
+            if (loadouts.length === 0) {
+                loadoutsList.innerHTML = '<p>Aucun équipement sauvegardé.</p>';
+                return;
+            }
+
+            loadouts.forEach((loadout, index) => {
+                const loadoutDiv = document.createElement('div');
+                loadoutDiv.className = 'loadout-item';
+                loadoutDiv.innerHTML = `
+                    <span class="loadout-item-name">${loadout.name}</span>
+                    <div class="loadout-actions">
+                        <button class="action-button equip-btn" data-index="${index}">Équiper</button>
+                        <button class="action-button delete-btn" data-index="${index}" style="background-color: #c0392b;">Supprimer</button>
+                    </div>
+                `;
+                loadoutsList.appendChild(loadoutDiv);
+            });
+
+            loadoutsList.querySelectorAll('.equip-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const index = e.target.dataset.index;
+                    const loadout = loadouts[index];
+                    await equipLoadout(loadout);
+                });
+            });
+
+            loadoutsList.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    if (confirm("Êtes-vous sûr de vouloir supprimer cet équipement ?")) {
+                        const index = e.target.dataset.index;
+                        loadouts.splice(index, 1);
+                        localStorage.setItem('destinyLoadouts', JSON.stringify(loadouts));
+                        displayLoadouts();
+                    }
+                });
+            });
+        }
+
+        async function equipLoadout(loadout) {
+            const session = getSessionFromCache();
+            alert(`Équipement de "${loadout.name}" en cours...`);
+            try {
+                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItems/', {
+                    method: 'POST',
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        itemIds: loadout.itemInstanceIds,
+                        characterId: loadout.characterId,
+                        membershipType: currentUserInfo.membershipType
+                    })
+                });
+                const data = await response.json();
+                if (data.ErrorCode === 1) {
+                    alert('Équipement appliqué avec succès !');
+                    refreshBtn.click(); // Refresh data to show changes
+                } else {
+                    throw new Error(data.Message);
+                }
+            } catch (error) {
+                alert(`Erreur lors de l'équipement : ${error.message}. Assurez-vous que tous les objets sont dans le coffre ou sur le personnage.`);
+            }
         }
     </script>
 </body>
