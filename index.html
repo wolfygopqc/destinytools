@@ -430,24 +430,22 @@
             <button id="loginBtn">Se connecter avec Bungie</button>
         </div>
 
-        <div id="main-layout" class="hidden">
-            <div id="vaultDisplayContainer" class="content-container hidden">
-                <h2>Votre Coffre</h2>
-                <div id="vaultGrid" class="inventory-grid"></div>
+        <div id="contentContainer" class="content-container hidden">
+            <div id="loading" class="hidden">
+                <div class="loader"></div>
+                <p>Chargement de vos données de Gardien...</p>
             </div>
 
-            <div id="contentContainer" class="content-container">
-                <div id="loading" class="hidden">
-                    <div class="loader"></div>
-                    <p>Chargement de vos données de Gardien...</p>
-                </div>
-
-                <div id="profileData">
-                    <div id="userInfo"></div>
-                    <h2>Vos Personnages</h2>
-                    <div id="characters"></div>
-                </div>
+            <div id="profileData">
+                <div id="userInfo"></div>
+                <h2>Vos Personnages</h2>
+                <div id="characters"></div>
             </div>
+        </div>
+
+        <div id="vaultDisplayContainer" class="content-container hidden">
+            <h2>Votre Coffre</h2>
+            <div id="vaultGrid" class="inventory-grid"></div>
         </div>
 
         <div id="itemDetailModal" class="modal-overlay">
@@ -463,15 +461,6 @@
     </main>
 
     <script>
-        /* Add this CSS dynamically for the new layout */
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #main-layout { display: flex; flex-wrap: wrap; gap: 20px; width: 100%; max-width: 1800px; justify-content: center; }
-            #contentContainer { flex: 1; min-width: 500px; }
-            #vaultDisplayContainer { flex: 1; min-width: 500px; }
-        `;
-        document.head.appendChild(style);
-
         const BUNGIE_CLIENT_ID = "51007";
         const BUNGIE_API_KEY = "d1fc55de14f441619f05e51c761dcca6";
 
@@ -489,7 +478,6 @@
         const itemDetailName = document.getElementById('itemDetailName');
         const itemDetailBody = document.getElementById('itemDetailBody');
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
-        const mainLayout = document.getElementById('main-layout');
         const vaultGrid = document.getElementById('vaultGrid');
         const errorDisplayDiv = document.createElement('div');
         const refreshBtn = document.getElementById('refreshBtn');
@@ -548,7 +536,7 @@
 
         function showContent() {
             loginContainer.classList.add('hidden');
-            mainLayout.classList.remove('hidden');
+            contentContainer.classList.remove('hidden');
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
