@@ -746,8 +746,6 @@
             const characterData = data.characters.data;
             const characterIds = data.profile.data.characterIds;
             const vaultInventory = data.profileInventory?.data?.items || [];
-            const renderData = data.characterRenderData?.data;
-            const equipmentData = data.characterEquipment.data;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             
             if (vaultInventory.length > 0) {
@@ -774,10 +772,6 @@
             } else {
                 vaultDisplayContainer.classList.add('hidden');
             }
-
-            const statDefinitions = {
-                '2996146975': { short: 'MOB', long: 'Mobilité' },'392767087': { short: 'RÉS', long: 'Résilience' },'1943323491': { short: 'RÉC', long: 'Récupération' },'1735777505': { short: 'DIS', long: 'Discipline' },'144602215': { short: 'INT', long: 'Intelligence' },'4244567218': { short: 'FOR', long: 'Force' }
-            };
 
             for (const characterId of characterIds) {
                 const characterCard = createCharacterCard(characterId, data, destinyMembershipId, membershipType);
@@ -839,12 +833,9 @@
                     equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
 
-            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`;
-            const renderData = data.characterRenderData?.data?.[characterId];
-            if (renderData && renderData.peerView) {
-                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
-                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${membershipType}/${destinyMembershipId}/${characterId}/CharacterRender.png?character=${characterId}&items=${equipmentHashes.join(',')}`;
-            }
+            const equipmentDataForRender = data.characterEquipment.data[characterId].items;
+            const equipmentHashes = equipmentDataForRender.map(e => e.itemHash);
+            const renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${membershipType}/${destinyMembershipId}/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
 
             card.innerHTML = `
                 <div class="character-info">
