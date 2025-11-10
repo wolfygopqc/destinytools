@@ -1512,17 +1512,24 @@
                     clanInfoDiv.innerHTML += progressionHtml;
                 }
 
-                let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th>';
+                const memberListDiv = document.createElement('div');
+                memberListDiv.className = 'member-list';
+                memberListDiv.innerHTML = '<h4>Membres</h4>';
+                const memberTable = document.createElement('table');
+                const tableHead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th>';
                 if (canPerformAdminActions) {
-                    membersHtml += '<th>Actions</th>';
+                    headerRow.innerHTML += '<th>Actions</th>';
                 }
-                membersHtml += '</tr>';
+                tableHead.appendChild(headerRow);
+                memberTable.appendChild(tableHead);
+                const tableBody = document.createElement('tbody');
 
                 try {
                     const membersRes = await fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const membersData = await membersRes.json();
                     if (membersData.ErrorCode === 1) {
-                        const tableBody = document.createElement('tbody');
                         const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
                         membersData.Response.results.sort((a, b) => b.memberType - a.memberType).forEach(member => {
                             let actionsHtml = '';
@@ -1547,22 +1554,27 @@
                             `;
                             tableBody.appendChild(row);
                         });
-                        membersHtml += tableBody.innerHTML;
                     } else {
-                        membersHtml += `<tr><td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td></tr>`;
+                        const errorRow = document.createElement('tr');
+                        errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td>`;
+                        tableBody.appendChild(errorRow);
                     }
                 } catch (memberError) {
                     console.error("Erreur lors du chargement des membres:", memberError);
-                    membersHtml += `<tr><td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td></tr>`;
+                    const errorRow = document.createElement('tr');
+                    errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td>`;
+                    tableBody.appendChild(errorRow);
                 }
-                membersHtml += '</table></div>';
+                memberTable.appendChild(tableBody);
+                memberListDiv.appendChild(memberTable);
 
                 if (canPerformAdminActions) {
-                    membersHtml += `<div style="margin-top: 15px; text-align: center;">
-                                        <button class="action-button" onclick="handleClanAction('recruit', '${groupId}')">➕ Recruter</button>
-                                    </div>`;
+                    const recruitDiv = document.createElement('div');
+                    recruitDiv.style = "margin-top: 15px; text-align: center;";
+                    recruitDiv.innerHTML = `<button class="action-button" onclick="handleClanAction('recruit', '${groupId}')">➕ Recruter</button>`;
+                    memberListDiv.appendChild(recruitDiv);
                 }
-                clanInfoDiv.innerHTML += membersHtml;
+                clanInfoDiv.appendChild(memberListDiv);
 
             } catch (error) {
                 console.error("Erreur lors du chargement initial des informations du clan:", error);
@@ -2000,7 +2012,7 @@
                 ...Object.values(fullProfileData.characterInventories.data).flatMap(inv => inv.items)
             ];
 
-            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullOutProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
             const categories = {
                 "Armes cinétiques": 1498876634, "Armes énergétiques": 2465295065, "Armes puissantes": 953998645,
@@ -2095,14 +2107,6 @@
                 document.getElementById('newLoadoutName').value = `Équipement ${typeText} importé`;
 
             } catch (error) {
-                alert("Code d'équipement invalide ou corrompu.");
-                console.error("Erreur d'importation :", error);
-            }
-        }
-    </script>
-</body>
- 
-</html>
                 alert("Code d'équipement invalide ou corrompu.");
                 console.error("Erreur d'importation :", error);
             }
