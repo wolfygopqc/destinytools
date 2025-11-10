@@ -711,7 +711,7 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-                displayData(profileData.Response);
+                displayData(profileData.Response, destinyMembershipId, membershipType);
 
             } catch (error) {
                 handleApiError(error);
@@ -734,7 +734,7 @@
             return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
-        function displayData(data) {
+        function displayData(data, destinyMembershipId, membershipType) {
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
@@ -822,7 +822,7 @@
                         const characterView = renderData[characterId].peerView;
                         if (characterView) {
                             const equipmentHashes = characterView.equipment.map(e => e.itemHash);
-                            renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${data.profile.data.userInfo.membershipType}/${data.profile.data.userInfo.membershipId}/${characterId}/CharacterRender.png?character=${characterId}&items=${equipmentHashes.join(',')}`;
+                            renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${membershipType}/${destinyMembershipId}/${characterId}/CharacterRender.png?character=${characterId}&items=${equipmentHashes.join(',')}`;
                         }
                     }
 
@@ -859,7 +859,8 @@
                     if (Date.now() > session.accessTokenExpiresAt) {
                         refreshToken(session.refreshToken);
                     } else {
-                        getProfileDataWithToken(session.accessToken, session.membershipId);
+                        // This call doesn't need the extra params, they are derived inside
+                        getProfileDataWithToken(session.accessToken, session.membershipId); 
                     }
                 } else {
                     clearInterval(refreshIntervalId);
