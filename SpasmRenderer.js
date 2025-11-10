@@ -20,7 +20,7 @@ class SpasmRenderer {
     initialize() {
         try { 
             // Correctly initialize Spasm.ItemPreview with all arguments
-            // The last two booleans enable camera controls.
+            // The last two booleans enable camera controls, which seems
             // This is crucial for the renderer to initialize properly.
             this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl, true, true);
 

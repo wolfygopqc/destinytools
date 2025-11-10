@@ -16,12 +16,8 @@
             --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             --hover-color: #fff;
         }
-        canvas {
-            outline: none;
-            background-color: transparent;
-        }
 
-        body { 
+        body {
             background-image: url('https://www.bungie.net/img/destiny_content/pgcr/background_decal.png');
             background-color: #0c1014;
             background-repeat: no-repeat;
@@ -164,11 +160,10 @@
             flex-shrink: 0;
             width: 150px;
             height: 320px;
+            background-size: cover;
+            background-position: center;
             border-left: 1px solid var(--border-color);
             padding-left: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .character-card h3 {
@@ -517,6 +512,31 @@
                 <div id="itemDetailBody" class="item-detail-body"></div>
             </div>
         </div>
+
+        <div id="vaultDisplayContainer" class="content-container hidden">
+            <h2>Votre Coffre</h2>
+            <div id="vaultGrid" class="inventory-grid"></div>
+        </div>
+
+        <div id="inventoryModal" class="modal-overlay">
+            <div class="modal-content">
+                <span id="modalCloseBtn" class="modal-close">&times;</span>
+                <h2 id="inventoryCharacterName">Inventaire</h2>
+                <div id="inventoryContent">
+                </div>
+            </div>
+        </div>
+
+        <div id="itemDetailModal" class="modal-overlay">
+            <div class="modal-content">
+                <span id="itemDetailCloseBtn" class="modal-close">&times;</span>
+                <div class="item-detail-header">
+                    <img id="itemDetailIcon" src="">
+                    <h3 id="itemDetailName"></h3>
+                </div>
+                <div id="itemDetailBody" class="item-detail-body"></div>
+            </div>
+        </div>
     </main>
 
     <script src="https://www.bungie.net/sharedbundle/spasm"></script>
@@ -710,20 +730,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [
-                    100, // Profiles
-                    102, // ProfileInventories (Vault)
-                    200, // Characters
-                    201, // CharacterInventories
-                    203, // CharacterRenderData
-                    205, // CharacterEquipment
-                    300, // ItemInstances
-                    304, // ItemStats
-                    305, // ItemSockets
-                    1200 // CharacterCustomization
-                ].join(',');
-
-                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
+                const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=Profiles,Characters,CharacterEquipment,CharacterRenderData,CharacterInventories,ProfileInventories,ItemInstances,ItemSockets,ItemStats`, {
                     headers: {
                         'X-API-Key': BUNGIE_API_KEY,
                         'Authorization': `Bearer ${accessToken}`
@@ -843,17 +850,24 @@
             statsHtml += '</div>';
 
             const equipmentGrid = document.createElement('div');
-            equipmentGrid.className = 'equipment-grid';
-            const equipmentData = data.characterEquipment.data[characterId].items;
+            equipmentGrid.className = 'equipment-grid'; 
+            const equipmentDataForGrid = data.characterEquipment.data[characterId].items;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
-            equipmentData
+            equipmentDataForGrid
                 .filter(item => relevantSlots.includes(item.bucketHash))
                 .sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))
                 .forEach(item => {
                     equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
 
+            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`; // Fallback
+            const renderData = data.characterRenderData?.data?.[characterId];
+            if (renderData && renderData.peerView) {
+                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
+                // This is the correct endpoint format for character rendering
+                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/Character/${characterId}/CharacterRender.png?character=${characterId}&items=${equipmentHashes.join(',')}`;
+            }
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
@@ -861,19 +875,9 @@
                     <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                     ${statsHtml}
                 </div>
-                <div class="character-render">
-                    <canvas id="render-canvas-${characterId}" width="150" height="320"></canvas>
-                </div>
+                <div class="character-render" style="background-image: url('${renderImageUrl}')"></div>
             `;
             card.querySelector('.character-info').appendChild(equipmentGrid);
-
-            setTimeout(() => {
-                const canvas = document.getElementById(`render-canvas-${characterId}`);
-                const renderData = data.characterRenderData?.data?.[characterId];
-                if (canvas && renderData) {
-                    new SpasmRenderer(canvas, char, renderData, 'https://www.bungie.net');
-                }
-            }, 0);
 
             const backgroundUrl = char.emblemBackgroundPath 
                 ? `https://www.bungie.net${char.emblemBackgroundPath}` 
@@ -1021,7 +1025,7 @@
                         }
                     }
                     bodyHtml += '</div>';
-                } 
+                }
 
                 itemDetailBody.innerHTML = bodyHtml;
                 itemDetailModal.classList.add('visible');
