@@ -647,6 +647,62 @@
         #importLoadoutInput, #newLoadoutName, .loadout-save-section input[type="text"] { flex-grow: 1; }
 
     </style>
+    <style>
+        .clan-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .clan-banner {
+            width: 100px;
+            height: 200px;
+            flex-shrink: 0;
+        }
+        .clan-details h3 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+        .clan-details .motto {
+            font-style: italic;
+            color: rgba(255,255,255,0.7);
+        }
+        .clan-rewards {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .reward-item {
+            margin-bottom: 10px;
+        }
+        .reward-progress {
+            background-color: rgba(0,0,0,0.4);
+            border-radius: 5px;
+            padding: 3px;
+        }
+        .reward-progress-bar {
+            background-color: var(--accent-color);
+            height: 15px;
+            border-radius: 3px;
+            text-align: center;
+            line-height: 15px;
+            font-size: 0.8em;
+            color: #000;
+            font-weight: bold;
+        }
+        .member-list {
+            max-height: 400px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+        .member-list table { width: 100%; border-collapse: collapse; }
+        .member-list th, .member-list td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); }
+        .member-list th { background-color: rgba(0,0,0,0.3); }
+        .member-list tr:nth-child(even) { background-color: rgba(0,0,0,0.1); }
+
+    </style>
 </head>
 
 <body>
@@ -687,7 +743,7 @@
             <h2>Communauté</h2>
             <p>Rechercher un Gardien pour voir ses personnages et son équipement.</p>
             <div id="playerSearch">
-                <input type="text" id="searchPlayerInput" placeholder="Bungie Name">
+                <input type="text" id="searchPlayerInput" placeholder="Pseudonyme Bungie">
                 <button id="searchPlayerBtn" class="action-button" style="width: auto;">Rechercher</button>
             </div>
             <div id="searchHistory" style="margin-top: 20px; text-align: left;">
@@ -726,6 +782,11 @@
                 <button id="importLoadoutBtn" class="action-button" style="width: auto;">Importer</button>
             </div>
             <div id="loadoutsList"></div>
+        </div>
+
+        <div id="clanContainer" class="content-container hidden">
+            <h2>Votre Clan</h2>
+            <div id="clanInfo"></div>
         </div>
 
         <div id="playerProfileModal" class="modal-overlay">
@@ -781,6 +842,8 @@
         const vendorsList = document.getElementById('vendorsList');
         const loadoutsContainer = document.getElementById('loadoutsContainer');
         const loadoutsList = document.getElementById('loadoutsList');
+        const clanContainer = document.getElementById('clanContainer');
+        const clanInfoDiv = document.getElementById('clanInfo');
         const createLoadoutBtn = document.getElementById('createLoadoutBtn');
         const importLoadoutBtn = document.getElementById('importLoadoutBtn');
         const loadoutBuilderModal = document.getElementById('loadoutBuilderModal');
@@ -997,6 +1060,7 @@
             questsContainer.classList.remove('hidden');
             vendorsContainer.classList.remove('hidden');
             loadoutsContainer.classList.remove('hidden');
+            clanContainer.classList.remove('hidden');
         }
 
 
@@ -1257,6 +1321,8 @@
             }
 
             await displayVendors(data);
+            
+            await displayClanInfo(currentUserInfo.membershipType, currentUserInfo.membershipId);
 
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
@@ -1336,6 +1402,80 @@
                 }
             } catch (error) {
                 vendorsList.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement des marchands: ${error.message}</p>`;
+            }
+        }
+
+        async function displayClanInfo(membershipType, membershipId) {
+            try {
+                const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
+                    headers: { 'X-API-Key': BUNGIE_API_KEY }
+                });
+                const groupsData = await groupsResponse.json();
+                if (groupsData.ErrorCode !== 1 || groupsData.Response.results.length === 0) {
+                    clanContainer.classList.add('hidden');
+                    return;
+                }
+
+                const clan = groupsData.Response.results[0].group;
+                const groupId = clan.groupId;
+
+                const [membersRes, weeklyRewardRes] = await Promise.all([
+                    fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } }),
+                    fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } })
+                ]);
+
+                const membersData = await membersRes.json();
+                const weeklyRewardData = await weeklyRewardRes.json();
+
+                let headerHtml = `
+                    <div class="clan-header">
+                        <img class="clan-banner" src="https://www.bungie.net${clan.bannerPath}">
+                        <div class="clan-details">
+                            <h3>${clan.name} [${clan.clanInfo.clanCallsign}]</h3>
+                            <p class="motto">"${clan.motto}"</p>
+                        </div>
+                    </div>
+                `;
+
+                let rewardsHtml = '<div class="clan-rewards"><h4>Récompenses de clan hebdomadaires</h4>';
+                if (weeklyRewardData.ErrorCode === 1) {
+                    for (const reward of weeklyRewardData.Response.rewards) {
+                        for (const entry of reward.entries) {
+                            const progress = entry.earned ? 100 : (entry.progress / 100000) * 100;
+                            rewardsHtml += `
+                                <div class="reward-item">
+                                    <span>${entry.rewardEntryLabel}</span>
+                                    <div class="reward-progress">
+                                        <div class="reward-progress-bar" style="width: ${progress.toFixed(0)}%;">${progress.toFixed(0)}%</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                rewardsHtml += '</div>';
+
+                let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
+                if (membersData.ErrorCode === 1) {
+                    const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
+                    membersData.Response.results.forEach(member => {
+                        membersHtml += `
+                            <tr>
+                                <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
+                                <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
+                                <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                membersHtml += '</table></div>';
+
+                clanInfoDiv.innerHTML = headerHtml + rewardsHtml + membersHtml;
+                clanContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Erreur lors du chargement des informations du clan:", error);
+                clanContainer.classList.add('hidden');
             }
         }
 
