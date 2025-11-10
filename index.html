@@ -16,6 +16,9 @@
             --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             --hover-color: #fff;
         }
+        canvas {
+            outline: none;
+        }
 
         body {
             background-image: url('https://www.bungie.net/img/destiny_content/pgcr/background_decal.png');
@@ -139,7 +142,7 @@
         }
         #characters {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr; /* Changed from auto-fit to single column */
             gap: 20px;
         }
         .character-card {
@@ -159,11 +162,12 @@
         .character-render {
             flex-shrink: 0;
             width: 150px;
-            height: 320px;
-            background-size: cover;
-            background-position: center;
+            height: 320px; /* The canvas will take this size */
             border-left: 1px solid var(--border-color);
             padding-left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .character-card h3 {
@@ -202,7 +206,7 @@
 
         .equipment-grid {
             display: grid;
-            grid-template-columns: repeat(8, 64px);
+            grid-template-columns: repeat(8, 64px); /* Fixed size for icons */
             justify-content: start;
             gap: 10px;
             margin-top: 20px;
@@ -514,6 +518,9 @@
         </div>
     </main>
 
+    <script src="https://www.bungie.net/sharedbundle/spasm"></script>
+    <script src="SpasmRenderer.js"></script>
+
     <script>
         const BUNGIE_CLIENT_ID = "51007";
         const BUNGIE_API_KEY = "d1fc55de14f441619f05e51c761dcca6";
@@ -711,7 +718,7 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-                displayData(profileData.Response, destinyMembershipId, membershipType);
+                displayData(profileData.Response, destinyMembershipId, membershipType); // Pass correct IDs
 
             } catch (error) {
                 handleApiError(error);
@@ -734,13 +741,14 @@
             return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
-        function displayData(data, destinyMembershipId, membershipType) {
+        function displayData(data, destinyMembershipId, membershipType) { // Receive correct IDs
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
             const profileInfo = data.profile.data.userInfo;
             userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
 
+            // Clear previous character cards
             charactersDiv.innerHTML = '';
 
             const characterData = data.characters.data;
@@ -805,6 +813,7 @@
             const raceMap = { 0: "Humain", 1: "Éveillé", 2: "Exo" };
             const statDefinitions = {
                 '2996146975': { short: 'MOB', long: 'Mobilité' }, '392767087': { short: 'RÉS', long: 'Résilience' }, '1943323491': { short: 'RÉC', long: 'Récupération' }, '1735777505': { short: 'DIS', long: 'Discipline' }, '144602215': { short: 'INT', long: 'Intelligence' }, '4244567218': { short: 'FOR', long: 'Force' }
+
             };
 
             const card = document.createElement('div');
@@ -822,24 +831,17 @@
             statsHtml += '</div>';
 
             const equipmentGrid = document.createElement('div');
-            equipmentGrid.className = 'equipment-grid'; 
-            const equipmentDataForGrid = data.characterEquipment.data[characterId].items;
+            equipmentGrid.className = 'equipment-grid';
+            const equipmentData = data.characterEquipment.data[characterId].items;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
-            equipmentDataForGrid
+            equipmentData
                 .filter(item => relevantSlots.includes(item.bucketHash))
                 .sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))
                 .forEach(item => {
                     equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
                 });
 
-            const equipmentDataForRender = data.characterEquipment.data[characterId].items;
-            let renderImageUrl = `https://www.bungie.net${char.emblemBackgroundPath}`; // Fallback
-            const renderData = data.characterRenderData?.data?.[characterId];
-            if (renderData && renderData.peerView) {
-                const equipmentHashes = renderData.peerView.equipment.map(e => e.itemHash);
-                renderImageUrl = `https://www.bungie.net/Platform/Destiny2/Character/Bungie/${membershipType}/${destinyMembershipId}/${characterId}/CharacterRender.png?items=${equipmentHashes.join(',')}`;
-            }
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
@@ -847,9 +849,20 @@
                     <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
                     ${statsHtml}
                 </div>
-                <div class="character-render" style="background-image: url('${renderImageUrl}')"></div>
+                <div class="character-render">
+                    <canvas id="render-canvas-${characterId}" width="150" height="320"></canvas>
+                </div>
             `;
             card.querySelector('.character-info').appendChild(equipmentGrid);
+
+            // After the card is in the DOM, initialize the renderer
+            setTimeout(() => {
+                const canvas = document.getElementById(`render-canvas-${characterId}`);
+                const renderData = data.characterRenderData?.data?.[characterId];
+                if (canvas && renderData) {
+                    new SpasmRenderer(canvas, char, renderData, 'https://www.bungie.net');
+                }
+            }, 0);
 
             const backgroundUrl = char.emblemBackgroundPath 
                 ? `https://www.bungie.net${char.emblemBackgroundPath}` 
@@ -1033,5 +1046,4 @@
     </script>
 </body>
  
-</html>
 </html>
