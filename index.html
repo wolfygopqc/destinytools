@@ -1507,14 +1507,37 @@
                     const weeklyRewardRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Clan/${groupId}/WeeklyRewardState/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
                     const weeklyRewardData = await weeklyRewardRes.json();
                     if (weeklyRewardData.ErrorCode === 1) {
-                        for (const reward of weeklyRewardData.Response.rewards) {
-                            for (const entry of reward.entries) {
+                        // The response is a single milestone object, its 'rewards' property is a dictionary of categories.
+                        for (const category of Object.values(weeklyRewardData.Response.rewards)) {
+                            for (const entry of category.entries) {
+                                let rewardName = 'Récompense inconnue';
+                                // If the label isn't provided, fetch the definition for the reward entry.
+                                if (entry.rewardEntryHash) {
+                                    const rewardDef = await getDefinition('DestinyMilestoneDefinition', entry.rewardEntryHash);
+                                    if (rewardDef && rewardDef.displayProperties.name) {
+                                        rewardName = rewardDef.displayProperties.name;
+                                    }
+                                }
+
+                        // The response is a single milestone object, its 'rewards' property is a dictionary of categories.
+                        for (const category of Object.values(weeklyRewardData.Response.rewards)) {
+                            for (const entry of category.entries) {
+                                let rewardName = 'Récompense inconnue';
+                                // If the label isn't provided, fetch the definition for the reward entry.
+                                if (entry.rewardrsh) {N
+                                    const rewardDef = await getDefinition('DestinyMilestoneDefinition', entry.rewardEntryHash);
+                                    if (rewardDef && rewardDef.displayProperties.name) {
+                                        rewardName = rewardDef.displayProperties.name;
+                                    }
+                                }
+
                                 const totalProgress = entry.progressTotal || 1;
                                 const currentProgress = entry.progress || 0;
                                 const percentage = entry.earned ? 100 : (currentProgress / totalProgress) * 100;
                                 rewardsHtml += `
                                     <div class="reward-item">
                                         <span>${entry.rewardEntryLabel || 'Récompense inconnue'}</span>
+                                        <span>${rewardName}</span>
                                         <div class="reward-progress">
                                             <div class="reward-progress-bar" style="width: ${percentage.toFixed(0)}%;">${percentage.toFixed(0)}%</div>
                                         </div>
