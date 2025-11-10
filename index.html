@@ -659,6 +659,7 @@
         .clan-banner {
             width: 100px;
             height: 200px;
+            object-fit: contain;
             flex-shrink: 0;
         }
         .clan-details h3 {
@@ -669,9 +670,20 @@
             font-style: italic;
             color: rgba(255,255,255,0.7);
         }
+        .clan-progression {
+            text-align: left;
+            margin-bottom: 20px;
+        }
         .clan-rewards {
             text-align: left;
             margin-bottom: 20px;
+        }
+        .clan-progression h4, .clan-rewards h4, .member-list h4 {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: left;
         }
         .reward-item {
             margin-bottom: 10px;
@@ -700,6 +712,10 @@
         .member-list table { width: 100%; border-collapse: collapse; }
         .member-list th, .member-list td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); }
         .member-list th { background-color: rgba(0,0,0,0.3); }
+        .member-list tr:not(:first-child):hover {
+            background-color: rgba(255,255,255,0.1);
+            cursor: pointer;
+        }
         .member-list tr:nth-child(even) { background-color: rgba(0,0,0,0.1); }
 
     </style>
@@ -1322,7 +1338,7 @@
 
             await displayVendors(data);
             
-            await displayClanInfo(currentUserInfo.membershipType, currentUserInfo.membershipId);
+            await displayClanInfo(data);
 
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
@@ -1405,7 +1421,9 @@
             }
         }
 
-        async function displayClanInfo(membershipType, membershipId) {
+        async function displayClanInfo(profileData) {
+            const { membershipType, membershipId } = currentUserInfo;
+
             try {
                 const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
@@ -1437,11 +1455,30 @@
                     </div>
                 `;
 
-                let rewardsHtml = '<div class="clan-rewards"><h4>Récompenses de clan hebdomadaires</h4>';
+                let progressionHtml = '<div class="clan-progression">';
+                const clanProgress = clan.clanInfo.d2ClanProgress;
+                const personalContribution = Object.values(profileData.characterProgressions.data).reduce((total, char) => {
+                    return total + (char.progressions[540048094]?.weeklyProgress || 0);
+                }, 0);
+
+                progressionHtml += `
+                    <div class="reward-item">
+                        <span>Niveau de Clan : ${clanProgress.level}</span>
+                        <div class="reward-progress">
+                            <div class="reward-progress-bar" style="width: ${(clanProgress.progressToNextLevel / clanProgress.nextLevelAt) * 100}%;">${clanProgress.progressToNextLevel} / ${clanProgress.nextLevelAt} XP</div>
+                        </div>
+                    </div>
+                    <div class="reward-item">
+                        <span>Contribution personnelle hebdomadaire : ${personalContribution.toLocaleString('fr-FR')} XP</span>
+                    </div>
+                `;
+                progressionHtml += '</div>';
+
+                let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                 if (weeklyRewardData.ErrorCode === 1) {
                     for (const reward of weeklyRewardData.Response.rewards) {
                         for (const entry of reward.entries) {
-                            const progress = entry.earned ? 100 : (entry.progress / 100000) * 100;
+                            const progress = entry.earned ? 100 : ((entry.progress || 0) / 100000) * 100;
                             rewardsHtml += `
                                 <div class="reward-item">
                                     <span>${entry.rewardEntryLabel}</span>
@@ -1458,19 +1495,20 @@
                 let membersHtml = '<div class="member-list"><h4>Membres</h4><table><tr><th>Nom</th><th>Rang</th><th>Date d\'arrivée</th></tr>';
                 if (membersData.ErrorCode === 1) {
                     const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
-                    membersData.Response.results.forEach(member => {
-                        membersHtml += `
-                            <tr>
-                                <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
-                                <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
-                                <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
-                            </tr>
+                    membersData.Response.results.sort((a, b) => a.memberType - b.memberType).forEach(member => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
+                            <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
+                            <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
                         `;
+                        tr.onclick = () => showPlayerProfile(member.destinyUserInfo.membershipType, member.destinyUserInfo.membershipId, member.destinyUserInfo.bungieGlobalDisplayName, member.destinyUserInfo.bungieGlobalDisplayNameCode);
+                        membersHtml += tr.outerHTML;
                     });
                 }
                 membersHtml += '</table></div>';
 
-                clanInfoDiv.innerHTML = headerHtml + rewardsHtml + membersHtml;
+                clanInfoDiv.innerHTML = headerHtml + progressionHtml + rewardsHtml + membersHtml;
                 clanContainer.classList.remove('hidden');
 
             } catch (error) {
