@@ -22,24 +22,31 @@ class SpasmRenderer {
             // Initialize Spasm's ItemPreview, which is the main controller for rendering
             this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl);
 
-            // Extract the necessary data for rendering from the API response
-            const gear = this.renderData.peerView.equipment.map(item => item.itemHash);
-            const dyes = this.renderData.customDyes;
-            const customization = this.renderData.customization;
+            // Spasm.js requires a specific data structure combining gear, dyes, and customization.
+            const gear = {
+                itemHashes: this.renderData.peerView.equipment.map(item => item.itemHash),
+                dyeHashes: this.renderData.customDyes.map(dye => dye.dyeHash),
+                customizationHashes: this.renderData.customization.options.map(opt => opt.optionHash)
+            };
 
             // Set character properties
             this.itemPreview.setGenderType(this.characterData.genderType);
             this.itemPreview.setClassHash(this.characterData.classHash);
 
-            // This is the main call to load and render the character
-            // It takes the list of gear hashes, dye hashes, and customization options
-            this.itemPreview.loadItemReferenceIdsWithMutedItems(
-                gear,
-                null, // shaderItemReferenceId (optional)
-                {},   // mutedItems
+            // This is the main call to load and render the character.
+            // We use loadItemReferenceIds, which is the simplest method provided by Spasm.
+            // It takes the combined gear object and a callback.
+            this.itemPreview.loadItemReferenceIds(
+                gear.itemHashes
+                    .concat(gear.dyeHashes)
+                    .concat(gear.customizationHashes),
+                null, // We can pass a specific shader here if we want to override
                 (success) => { // Callback on completion
                     if (success) {
                         console.log(`Character ${this.characterData.characterId} rendered successfully.`);
+                        // Apply the specific dyes and customization after loading the assets
+                        this.itemPreview.setDyes(this.renderData.customDyes);
+                        this.itemPreview.setCustomization(this.renderData.customization.options);
                         this.itemPreview.startAnimating();
                     } else {
                         console.error(`Failed to render character ${this.characterData.characterId}.`);
