@@ -459,6 +459,15 @@
         .quest-progress-bar { background-color: var(--accent-color); height: 100%; }
         .quest-progress-text { font-size: 0.8em; color: rgba(255,255,255,0.7); }
 
+        .history-item {
+            cursor: pointer;
+            padding: 8px;
+            background-color: rgba(255,255,255,0.05);
+            margin-bottom: 5px;
+            transition: background-color 0.2s;
+        }
+        .history-item:hover { background-color: rgba(255,255,255,0.15); }
+
     </style>
 </head>
 
@@ -500,8 +509,13 @@
             <h2>Communauté</h2>
             <p>Rechercher un Gardien pour voir ses personnages et son équipement.</p>
             <div id="playerSearch">
-                <input type="text" id="searchPlayerInput" placeholder="Pseudonyme Bungie" style="padding: 8px; width: 50%; margin-right: 10px;">
+                <input type="text" id="searchPlayerInput" placeholder="Bungie Name" style="padding: 8px; width: 50%; margin-right: 10px;">
                 <button id="searchPlayerBtn" class="action-button" style="width: auto;">Rechercher</button>
+            </div>
+            <div id="searchHistory" style="margin-top: 20px; text-align: left;">
+                <h4>Historique</h4>
+                <div id="searchHistoryList">
+                </div>
             </div>
         </div>
 
@@ -514,6 +528,11 @@
                 </div>
                 <div id="itemDetailBody" class="item-detail-body"></div>
             </div>
+        </div>
+
+        <div id="questsContainer" class="content-container hidden">
+            <h2>Quêtes et Contrats</h2>
+            <div id="questsList"></div>
         </div>
 
         <div id="playerProfileModal" class="modal-overlay">
@@ -549,6 +568,8 @@
         const communityContainer = document.getElementById('communityContainer');
         const searchPlayerBtn = document.getElementById('searchPlayerBtn');
         const playerProfileModal = document.getElementById('playerProfileModal');
+        const questsContainer = document.getElementById('questsContainer');
+        const questsList = document.getElementById('questsList');
         const playerProfileModalCloseBtn = document.getElementById('playerProfileModalCloseBtn');
 
         const errorDisplayDiv = document.createElement('div');
@@ -564,6 +585,7 @@
 
         window.onload = () => {
             const session = getSessionFromCache();
+            displaySearchHistory();
             if (session) {
                 showContent();
                 if (Date.now() > session.accessTokenExpiresAt) {
@@ -683,6 +705,8 @@
             playerProfileName.textContent = `Profil de ${displayName}#${displayCode}`;
             playerProfileContent.innerHTML = '<div class="loader"></div>';
 
+            addPlayerToHistory({ membershipType, membershipId, displayName, displayCode });
+
             try {
                 const session = getSessionFromCache();
                 const components = [100, 200, 201, 202, 205, 300, 304, 305].join(',');
@@ -702,7 +726,7 @@
                 }
 
                 for (const characterId of response.profile.data.characterIds) {
-                    const characterCard = createCharacterCard(characterId, response, itemInstances);
+                    const characterCard = await createCharacterCard(characterId, response, itemInstances);
                     if (characterCard) {
                         playerProfileContent.appendChild(characterCard);
                     }
@@ -720,6 +744,7 @@
             logoutBtn.classList.remove('hidden');
             refreshBtn.classList.remove('hidden');
             communityContainer.classList.remove('hidden');
+            questsContainer.classList.remove('hidden');
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -847,7 +872,7 @@
             return sessionStr ? JSON.parse(sessionStr) : null;
         }
 
-        function displayData(data) {
+        async function displayData(data) {
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
@@ -866,10 +891,10 @@
                 
                 vaultInventory.sort((a, b) => a.bucketHash - b.bucketHash);
     
-                vaultInventory.forEach(item => {
-                    const itemElement = createItemElement(item, itemInstances, data, 'vault');
+                for (const item of vaultInventory) {
+                    const itemElement = await createItemElement(item, itemInstances, data, 'vault');
                     vaultGrid.appendChild(itemElement);
-                });
+                }
 
                 const remainder = vaultInventory.length % 8;
                 if (remainder > 0) {
@@ -883,12 +908,52 @@
     
                 vaultDisplayContainer.classList.remove('hidden');
                 communityContainer.classList.remove('hidden');
+                questsContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
-                const characterCard = createCharacterCard(characterId, data, itemInstances);
+                const characterCard = await createCharacterCard(characterId, data, itemInstances);
                 if (characterCard) {
                     charactersDiv.appendChild(characterCard);
+                }
+            }
+
+            questsList.innerHTML = '';
+            for (const characterId of characterIds) {
+                const char = data.characters.data[characterId];
+                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                const questsInventory = data.characterInventories?.data?.[characterId]?.items.filter(item => item.bucketHash === 1345459588);
+
+                if (questsInventory && questsInventory.length > 0) {
+                    const charQuestsContainer = document.createElement('div');
+                    charQuestsContainer.innerHTML = `<h4>${classMap[char.classType]}</h4>`;
+
+                    for (const questItem of questsInventory) {
+                        const questDef = await getDefinition('DestinyInventoryItemDefinition', questItem.itemHash);
+                        if (!questDef || !questDef.displayProperties.name) continue;
+
+                        const objectives = data.characterProgressions?.data?.[characterId]?.uninstancedItemObjectives[questItem.itemHash];
+                        let progressHtml = '';
+                        if (objectives && objectives.length > 0) {
+                            const mainObjective = objectives[0];
+                            const progress = mainObjective.progress || 0;
+                            const total = mainObjective.completionValue;
+                            const percentage = total > 0 ? (progress / total) * 100 : 0;
+                            progressHtml = `
+                                <div class="quest-progress-text">${questDef.objectives.objectiveVerbName || 'Progression'}: ${progress} / ${total}</div>
+                                <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
+                            `;
+                        }
+
+                        const questElement = document.createElement('div');
+                        questElement.className = 'quest-item';
+                        questElement.innerHTML = `
+                            <img src="https://www.bungie.net${questDef.displayProperties.icon}" />
+                            <div class="quest-info"><strong>${questDef.displayProperties.name}</strong>${progressHtml}</div>
+                        `;
+                        charQuestsContainer.appendChild(questElement);
+                    }
+                    questsList.appendChild(charQuestsContainer);
                 }
             }
 
@@ -907,7 +972,7 @@
             }, 300000);
         }
 
-        function createCharacterCard(characterId, data, itemInstances) {
+        async function createCharacterCard(characterId, data, itemInstances) {
             const char = data.characters.data[characterId];
             if (!char) return null;
 
@@ -947,10 +1012,11 @@
             equipmentData
                 .filter(item => relevantSlots.includes(item.bucketHash))
                 .sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))
-                .forEach(item => {
-                    equipmentGrid.appendChild(createItemElement(item, itemInstances, data, characterId));
-                });
-
+                
+            for (const item of equipmentData.filter(item => relevantSlots.includes(item.bucketHash)).sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))) {
+                const itemElement = await createItemElement(item, itemInstances, data, characterId);
+                equipmentGrid.appendChild(itemElement);
+            }
             card.innerHTML = `
                 <div class="character-info">
                     <h3>${classMap[char.classType] || 'Inconnue'}</h3>
@@ -968,57 +1034,10 @@
             card.style.backgroundSize = 'cover';
             card.style.backgroundPosition = 'center';
 
-            const questsInventory = data.characterInventories?.data?.[characterId]?.items.filter(item => item.bucketHash === 1345459588);
-            if (questsInventory && questsInventory.length > 0) {
-                const questsContainer = document.createElement('div');
-                const toggleButton = document.createElement('button');
-                toggleButton.className = 'quests-toggle-button';
-                toggleButton.textContent = 'Afficher les quêtes';
-                
-                const questsListDiv = document.createElement('div');
-                questsListDiv.className = 'quests-container';
-
-                toggleButton.onclick = () => {
-                    if (questsListDiv.style.maxHeight) {
-                        questsListDiv.style.maxHeight = null;
-                        toggleButton.textContent = 'Afficher les quêtes';
-                    } else {
-                        questsListDiv.style.maxHeight = questsListDiv.scrollHeight + "px";
-                        toggleButton.textContent = 'Masquer les quêtes';
-                    }
-                };
-
-                questsInventory.forEach(async questItem => {
-                    const questDef = await getDefinition('DestinyInventoryItemDefinition', questItem.itemHash);
-                    if (!questDef || !questDef.displayProperties.name) return;
-
-                    const objectives = data.characterProgressions?.data?.[characterId]?.uninstancedItemObjectives[questItem.itemHash];
-                    let progressHtml = '';
-                    if (objectives && objectives.length > 0) {
-                        const mainObjective = objectives[0];
-                        const progress = mainObjective.progress || 0;
-                        const total = mainObjective.completionValue;
-                        const percentage = total > 0 ? (progress / total) * 100 : 0;
-                        progressHtml = `
-                            <div class="quest-progress-text">${questDef.objectives.objectiveVerbName || 'Progression'}: ${progress} / ${total}</div>
-                            <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
-                        `;
-                    }
-
-                    questsListDiv.innerHTML += `
-                        <div class="quest-item">
-                            <img src="https://www.bungie.net${questDef.displayProperties.icon}" />
-                            <div class="quest-info"><strong>${questDef.displayProperties.name}</strong>${progressHtml}</div>
-                        </div>`;
-                });
-                questsContainer.appendChild(toggleButton);
-                questsContainer.appendChild(questsListDiv);
-                card.appendChild(questsContainer);
-            }
             return card;
         }
 
-        function createItemElement(item, itemInstances, data, characterId) {
+        async function createItemElement(item, itemInstances, data, characterId) {
             const instance = itemInstances[item.itemInstanceId];
             const power = instance?.primaryStat?.value || '';            
             
@@ -1026,9 +1045,13 @@
             itemElement.className = 'item-slot';
             const img = document.createElement('img');
             img.className = 'item-icon';
-            getDefinition('DestinyInventoryItemDefinition', item.itemHash).then(def => {
-                if (def) img.src = `https://www.bungie.net${def.displayProperties.icon}`;
-            });
+
+            const def = await getDefinition('DestinyInventoryItemDefinition', item.itemHash);
+            if (def && def.displayProperties.icon) {
+                img.src = `https://www.bungie.net${def.displayProperties.icon}`;
+            } else {
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; // Transparent 1x1 GIF
+            }
             let quantityHtml = '';
             if (item.quantity > 1) {
                 quantityHtml = `<span class="item-quantity">${item.quantity}</span>`;
@@ -1138,6 +1161,32 @@
             contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
 
+        function addPlayerToHistory(player) {
+            let history = JSON.parse(localStorage.getItem('destinySearchHistory')) || [];
+            // Remove player if already in history to move them to the top
+            history = history.filter(p => p.membershipId !== player.membershipId);
+            // Add to the beginning of the array
+            history.unshift(player);
+            // Keep only the last 5 searches
+            if (history.length > 5) {
+                history.pop();
+            }
+            localStorage.setItem('destinySearchHistory', JSON.stringify(history));
+            displaySearchHistory();
+        }
+
+        function displaySearchHistory() {
+            const history = JSON.parse(localStorage.getItem('destinySearchHistory')) || [];
+            const historyListDiv = document.getElementById('searchHistoryList');
+            historyListDiv.innerHTML = '';
+            history.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'history-item';
+                playerDiv.textContent = `${player.displayName}#${player.displayCode}`;
+                playerDiv.onclick = () => showPlayerProfile(player.membershipType, player.membershipId, player.displayName, player.displayCode);
+                historyListDiv.appendChild(playerDiv);
+            });
+        }
     </script>
 </body>
  
