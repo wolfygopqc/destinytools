@@ -1479,26 +1479,28 @@
                 `;
                 clanInfoDiv.innerHTML += headerHtml;
 
-                let progressionHtml = '<div class="clan-progression">';
                 const clanProgress = clan.clanInfo.d2ClanProgress;
-                const personalContribution = Object.values(profileData.characterProgressions.data).reduce((total, char) => {
-                    return total + (char.progressions[540048094]?.weeklyProgress || 0);
-                }, 0);
-                const clanLevelTotal = clanProgress.nextLevelAt || 1;
-                const clanLevelCurrent = clanProgress.progressToNextLevel || 0;
-                progressionHtml += `
-                    <div class="reward-item">
-                        <span>Niveau de Clan : ${clanProgress.level}</span>
-                        <div class="reward-progress">
-                            <div class="reward-progress-bar" style="width: ${((clanLevelCurrent / clanLevelTotal) * 100).toFixed(0)}%;">${clanLevelCurrent} / ${clanLevelTotal} XP</div>
+                if (clanProgress) {
+                    let progressionHtml = '<div class="clan-progression">';
+                    const personalContribution = Object.values(profileData.characterProgressions.data).reduce((total, char) => {
+                        return total + (char.progressions[540048094]?.weeklyProgress || 0);
+                    }, 0);
+                    const clanLevelTotal = clanProgress.nextLevelAt || 1;
+                    const clanLevelCurrent = clanProgress.progressToNextLevel || 0;
+                    progressionHtml += `
+                        <div class="reward-item">
+                            <span>Niveau de Clan : ${clanProgress.level}</span>
+                            <div class="reward-progress">
+                                <div class="reward-progress-bar" style="width: ${((clanLevelCurrent / clanLevelTotal) * 100).toFixed(0)}%;">${clanLevelCurrent} / ${clanLevelTotal} XP</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="reward-item">
-                        <span>Contribution personnelle hebdomadaire : ${personalContribution.toLocaleString('fr-FR')} XP</span>
-                    </div>
-                `;
-                progressionHtml += '</div>';
-                clanInfoDiv.innerHTML += progressionHtml;
+                        <div class="reward-item">
+                            <span>Contribution personnelle hebdomadaire : ${personalContribution.toLocaleString('fr-FR')} XP</span>
+                        </div>
+                    `;
+                    progressionHtml += '</div>';
+                    clanInfoDiv.innerHTML += progressionHtml;
+                }
 
                 let rewardsHtml = '<div class="clan-rewards"><h4>Engrammes de clan hebdomadaires</h4>';
                 try {
