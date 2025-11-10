@@ -498,6 +498,40 @@
         }
         .history-item:hover { background-color: rgba(255,255,255,0.15); }
 
+        .vendor-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .vendor-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+        }
+        .vendor-header img { width: 48px; height: 48px; border-radius: 50%; }
+        .vendor-inventory {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 10px;
+            padding: 15px;
+        }
+        .vendor-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+        }
+        .vendor-item > img { width: 48px; height: 48px; }
+        .vendor-item-costs {
+            margin-top: 5px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
     </style>
 </head>
 
@@ -565,6 +599,11 @@
             <div id="questsList"></div>
         </div>
 
+        <div id="vendorsContainer" class="content-container hidden">
+            <h2>Marchands</h2>
+            <div id="vendorsList"></div>
+        </div>
+
         <div id="playerProfileModal" class="modal-overlay">
             <div class="modal-content" style="max-width: 1400px;">
                 <span id="playerProfileModalCloseBtn" class="modal-close">&times;</span>
@@ -600,6 +639,8 @@
         const playerProfileModal = document.getElementById('playerProfileModal');
         const questsContainer = document.getElementById('questsContainer');
         const questsList = document.getElementById('questsList');
+        const vendorsContainer = document.getElementById('vendorsContainer');
+        const vendorsList = document.getElementById('vendorsList');
         const playerProfileModalCloseBtn = document.getElementById('playerProfileModalCloseBtn');
 
         const errorDisplayDiv = document.createElement('div');
@@ -739,7 +780,7 @@
 
             try {
                 const session = getSessionFromCache();
-                const components = [100, 200, 201, 202, 205, 300, 304, 305].join(',');
+                const components = [100, 200, 201, 202, 205, 300, 304, 305, 402].join(',');
                 const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${membershipId}/?components=${components}`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
                 });
@@ -775,6 +816,7 @@
             refreshBtn.classList.remove('hidden');
             communityContainer.classList.remove('hidden');
             questsContainer.classList.remove('hidden');
+            vendorsContainer.classList.remove('hidden');
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -868,7 +910,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305].join(',');
+                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305, 402].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
@@ -939,6 +981,7 @@
                 vaultDisplayContainer.classList.remove('hidden');
                 communityContainer.classList.remove('hidden');
                 questsContainer.classList.remove('hidden');
+                vendorsContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -1027,6 +1070,56 @@
                         charQuestsContainer.appendChild(questElement);
                     }
                     questsList.appendChild(charQuestsContainer);
+                }
+            }
+
+            vendorsList.innerHTML = '';
+            const vendorHashes = {
+                XUR: 2190858386,
+                BANSHEE: 672118013,
+                ADA: 350061650
+            };
+            const vendorSales = data.sales.data;
+            if (vendorSales) {
+                for (const vendorKey in vendorHashes) {
+                    const vendorHash = vendorHashes[vendorKey];
+                    if (vendorSales[vendorHash]) {
+                        const vendorDef = await getDefinition('DestinyVendorDefinition', vendorHash);
+                        const sales = vendorSales[vendorHash].saleItems;
+
+                        let itemsHtml = '';
+                        for (const saleKey in sales) {
+                            const saleItem = sales[saleKey];
+                            const itemDef = await getDefinition('DestinyInventoryItemDefinition', saleItem.itemHash);
+
+                            let costsHtml = '';
+                            for (const cost of saleItem.costs) {
+                                const costDef = await getDefinition('DestinyInventoryItemDefinition', cost.itemHash);
+                                costsHtml += `<img src="https://www.bungie.net${costDef.displayProperties.icon}" title="${costDef.displayProperties.name}" style="width: 16px; height: 16px;"> ${cost.quantity}`;
+                            }
+
+                            itemsHtml += `
+                                <div class="vendor-item">
+                                    <img src="https://www.bungie.net${itemDef.displayProperties.icon}" class="rarity-border-${itemDef.inventory.tierType}" style="border-width: 2px; border-style: solid;">
+                                    <div>
+                                        <strong>${itemDef.displayProperties.name}</strong>
+                                        <div class="vendor-item-costs">${costsHtml}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        vendorsList.innerHTML += `
+                            <div class="vendor-card">
+                                <div class="vendor-header">
+                                    <img src="https://www.bungie.net${vendorDef.displayProperties.icon}">
+                                    <h3>${vendorDef.displayProperties.name}</h3>
+                                </div>
+                                <div class="vendor-inventory">
+                                    ${itemsHtml}
+                                </div>
+                            </div>`;
+                    }
                 }
             }
 
