@@ -942,7 +942,7 @@
             }
 
             const questsGrid = card.querySelector('.quests-grid');
-            if (data.characterInventories?.data?.[characterId]?.items) {
+            if (data.characterInventories?.data?.[characterId]?.items && data.itemComponents?.objectives?.data) {
                 displayQuestsAndBounties(questsGrid, data.characterInventories.data[characterId].items, data.itemComponents.objectives.data);
             }
 
@@ -1212,4 +1212,5 @@
     </script>
 </body>
  
+</html>
 </html>
