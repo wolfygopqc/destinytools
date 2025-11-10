@@ -1424,6 +1424,8 @@
 
             clanInfoDiv.innerHTML = '';
             clanContainer.classList.add('hidden');
+            clanInfoDiv.innerHTML = ''; // Clear previous content
+            // clanContainer.classList.add('hidden'); // showContent already makes it visible, no need to hide it here initially
 
             try {
                 const groupsResponse = await fetch(`https://www.bungie.net/Platform/GroupV2/User/${membershipType}/${membershipId}/0/1/`, {
@@ -1432,6 +1434,9 @@
                 const groupsData = await groupsResponse.json();
                 if (groupsData.ErrorCode !== 1 || groupsData.Response.results.length === 0) {
                     return;
+                    clanInfoDiv.innerHTML = '<p style="text-align: center; color: rgba(240, 240, 240, 0.7);">Vous n\'avez pas de clan.</p>';
+                    clanContainer.classList.remove('hidden'); // Ensure the container is visible to show the message
+                    return; 
                 }
 
                 const clan = groupsData.Response.results[0].group;
