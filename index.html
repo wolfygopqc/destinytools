@@ -143,7 +143,7 @@
         }
         #characters {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(650px, 1fr));
             gap: 20px;
         }
         .character-card {
@@ -163,7 +163,7 @@
         .character-render {
             flex-shrink: 0;
             width: 150px;
-            height: 320px; /* The canvas will take this size */
+            height: 320px;
             border-left: 1px solid var(--border-color);
             padding-left: 20px;
             display: flex;
@@ -558,6 +558,11 @@
             </div>
         </div>
 
+        <div id="vendorDisplayContainer" class="content-container hidden">
+            <h2>Marchands de la Tour</h2>
+            <div id="vendorGrid"></div>
+        </div>
+
         <div id="vaultDisplayContainer" class="content-container hidden">
             <h2>Votre Coffre</h2>
             <div id="vaultGrid" class="inventory-grid"></div>
@@ -611,6 +616,8 @@
         let currentOpenItem = null;
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
         const vaultGrid = document.getElementById('vaultGrid');
+        const vendorDisplayContainer = document.getElementById('vendorDisplayContainer');
+        const vendorGrid = document.getElementById('vendorGrid');
         const errorDisplayDiv = document.createElement('div');
         const perkDefinitionsCache = {};
         const refreshBtn = document.getElementById('refreshBtn');
@@ -776,18 +783,18 @@
                 const membershipType = destinyProfile.membershipType;
 
                 const components = [
-                    100,  // Profiles
-                    102,  // ProfileInventories (Vault)
-                    200,  // Characters
-                    201,  // CharacterInventories
-                    202,  // CharacterProgressions
-                    203,  // CharacterRenderData
-                    205,  // CharacterEquipment
-                    300,  // ItemInstances
-                    302,  // ItemObjectives
-                    304,  // ItemStats
-                    305,  // ItemSockets
-                    1200  // CharacterCustomization
+                    100,
+                    102,
+                    200,
+                    201,
+                    202,
+                    203,
+                    205,
+                    300,
+                    302,
+                    304,
+                    305,
+                    1200
                 ].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
@@ -800,6 +807,8 @@
 
                 const profileData = await profileResponse.json();
                 displayData(profileData.Response, destinyMembershipId, membershipType);
+
+                const firstCharacterId = profileData.Response.profile.data.characterIds[0];
 
             } catch (error) {
                 handleApiError(error);
@@ -834,7 +843,6 @@
             const characterIds = data.profile.data.characterIds;
             const vaultInventory = data.profileInventory?.data?.items || [];
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
-            
             if (vaultInventory.length > 0) {
                 vaultGrid.innerHTML = '';
                 
@@ -994,7 +1002,7 @@
         }
 
         async function displayQuestsAndBounties(container, inventoryItems, objectivesData) {
-            const questBucketHashes = [1345459588, 242293158]; // Bounties and Quests
+            const questBucketHashes = [1345459588, 242293158];
             const quests = inventoryItems.filter(item => questBucketHashes.includes(item.bucketHash));
 
             if (quests.length > 0) {
@@ -1209,8 +1217,43 @@
             errorDisplayDiv.innerHTML = `<p style="color: #ff7b7b; text-align: center;">Erreur: ${error.message}</p>`;
             contentContainer.insertBefore(errorDisplayDiv, contentContainer.firstChild);
         }
+
+        async function getVendorData(accessToken, membershipType, destinyMembershipId, characterId) {
+            try {
+                const vendorResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/Character/${characterId}/Vendors/?components=402`, {
+                    headers: {
+                        'X-API-Key': BUNGIE_API_KEY,
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                if (!vendorResponse.ok) throw new Error(`Impossible de récupérer les données des marchands (Status: ${vendorResponse.status})`);
+
+                const vendorData = await vendorResponse.json();
+                if (vendorData.ErrorCode !== 1) throw new Error(vendorData.Message);
+
+                displayVendors(vendorData.Response);
+
+            } catch (error) {
+                handleApiError(error);
+            }
+        }
+
+        function displayVendors(data) {
+            vendorGrid.innerHTML = '';
+            vendorDisplayContainer.classList.remove('hidden');
+
+            const vendorSales = data.sales.data;
+            if (!vendorSales) return;
+
+            const relevantVendors = {
+                '2190858386': 'Xûr',
+                '672118013': 'Banshee-44',
+                '2762206170': 'Ada-1'
+            };
+
+        }
+
     </script>
 </body>
  
-</html>
 </html>
