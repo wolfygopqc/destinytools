@@ -167,7 +167,6 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             text-align: center;
@@ -411,6 +410,15 @@
             background-color: #75b0f8;
             transform: scale(1.05);
         }
+        .action-button {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 
@@ -448,6 +456,15 @@
             <div id="vaultGrid" class="inventory-grid"></div>
         </div>
 
+        <div id="communityContainer" class="content-container hidden">
+            <h2>Communauté</h2>
+            <p>Rechercher un Gardien pour voir ses personnages et son équipement.</p>
+            <div id="playerSearch">
+                <input type="text" id="searchPlayerInput" placeholder="Bungie Name#1234" style="padding: 8px; width: 50%; margin-right: 10px;">
+                <button id="searchPlayerBtn" class="action-button" style="width: auto;">Rechercher</button>
+            </div>
+        </div>
+
         <div id="itemDetailModal" class="modal-overlay">
             <div class="modal-content">
                 <span id="itemDetailCloseBtn" class="modal-close">&times;</span>
@@ -456,6 +473,16 @@
                     <h3 id="itemDetailName"></h3>
                 </div>
                 <div id="itemDetailBody" class="item-detail-body"></div>
+            </div>
+        </div>
+
+        <div id="playerProfileModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 1400px;">
+                <span id="playerProfileModalCloseBtn" class="modal-close">&times;</span>
+                <h2 id="playerProfileName">Profil du Gardien</h2>
+                <div id="playerProfileContent">
+                    <div class="loader"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -479,6 +506,11 @@
         const itemDetailBody = document.getElementById('itemDetailBody');
         const vaultDisplayContainer = document.getElementById('vaultDisplayContainer');
         const vaultGrid = document.getElementById('vaultGrid');
+        const communityContainer = document.getElementById('communityContainer');
+        const searchPlayerBtn = document.getElementById('searchPlayerBtn');
+        const playerProfileModal = document.getElementById('playerProfileModal');
+        const playerProfileModalCloseBtn = document.getElementById('playerProfileModalCloseBtn');
+
         const errorDisplayDiv = document.createElement('div');
         const refreshBtn = document.getElementById('refreshBtn');
         const perkDefinitionsCache = {};
@@ -534,6 +566,67 @@
             itemDetailModal.classList.remove('visible');
         });
 
+        playerProfileModalCloseBtn.addEventListener('click', () => {
+            playerProfileModal.classList.remove('visible');
+            document.getElementById('playerProfileContent').innerHTML = '<div class="loader"></div>';
+        });
+
+        searchPlayerBtn.addEventListener('click', async () => {
+            const searchInput = document.getElementById('searchPlayerInput');
+            const bungieNameFull = searchInput.value.trim();
+            const parts = bungieNameFull.split('#');
+
+            if (parts.length !== 2 || !parts[0] || !parts[1]) {
+                alert("Veuillez entrer un nom au format 'Nom#1234'.");
+                return;
+            }
+
+            const displayName = parts[0];
+            const displayNameCode = parts[1];
+
+            playerProfileModal.classList.add('visible');
+            const playerProfileContent = document.getElementById('playerProfileContent');
+            const playerProfileName = document.getElementById('playerProfileName');
+            playerProfileName.textContent = `Recherche de ${bungieNameFull}...`;
+
+            try {
+                const searchResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/SearchDestinyPlayerByBungieName/-1/`, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ displayName, displayNameCode })
+                });
+                const searchData = await searchResponse.json();
+
+                if (searchData.ErrorCode !== 1 || searchData.Response.length === 0) {
+                    throw new Error("Joueur introuvable.");
+                }
+
+                const playerData = searchData.Response[0];
+                playerProfileName.textContent = `Profil de ${playerData.bungieGlobalDisplayName}#${playerData.bungieGlobalDisplayNameCode}`;
+
+                const session = getSessionFromCache();
+                const components = [100, 200, 205, 300, 304, 305].join(',');
+                const profileResponse = await fetch(`https://www.bungie.net/Platform/Destiny2/${playerData.membershipType}/Profile/${playerData.membershipId}/?components=${components}`, {
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
+                });
+                const profileData = await profileResponse.json();
+                if (profileData.ErrorCode !== 1) throw new Error(profileData.Message);
+
+                const response = profileData.Response;
+                playerProfileContent.innerHTML = '';
+                const itemInstances = response.itemComponents?.instances?.data || {};
+
+                for (const characterId of response.profile.data.characterIds) {
+                    const characterCard = createCharacterCard(characterId, response, itemInstances);
+                    if (characterCard) {
+                        playerProfileContent.appendChild(characterCard);
+                    }
+                }
+            } catch (error) {
+                playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur : ${error.message}</p>`;
+            }
+        });
+
         function showContent() {
             loginContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
@@ -541,6 +634,7 @@
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
             refreshBtn.classList.remove('hidden');
+            communityContainer.classList.remove('hidden');
         }
 
         async function getTokensWithAuthCode(authCode) {
@@ -703,6 +797,7 @@
                 }
     
                 vaultDisplayContainer.classList.remove('hidden');
+                communityContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -741,12 +836,12 @@
             card.className = 'character-card';
 
             const statOrder = [
-                '144602215',  // SUPER
-                '1735777505', // GRENADE
-                '2996146975', // ARMES
-                '392767087',  // SANTÉ
-                '1943323491', // CLASSE
-                '4244567218'  // MÊLÉE
+                '144602215',
+                '1735777505',
+                '2996146975',
+                '392767087',
+                '1943323491',
+                '4244567218'
             ];
 
             let statsHtml = '<div class="stats-grid">';
@@ -914,5 +1009,4 @@
     </script>
 </body>
  
-</html>
 </html>
