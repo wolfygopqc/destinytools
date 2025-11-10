@@ -20,13 +20,12 @@ class SpasmRenderer {
     initialize() {
         try { 
             // Initialize Spasm's ItemPreview, which is the main controller for rendering
-            this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl, true, true);
+            this.itemPreview = new Spasm.ItemPreview(this.canvas, this.contentBaseUrl);
 
             // Spasm.js requires a specific data structure combining gear, dyes, and customization.
             const gear = {
                 itemHashes: this.renderData.peerView.equipment.map(item => item.itemHash),
-                dyeHashes: this.renderData.customDyes.map(dye => dye.dyeHash),
-                customizationHashes: this.renderData.customization.options.map(opt => opt.optionHash)
+                dyeHashes: this.renderData.customDyes.map(dye => dye.dyeHash)
             };
 
             // Set character properties
@@ -37,16 +36,13 @@ class SpasmRenderer {
             // We use loadItemReferenceIds, which is the simplest method provided by Spasm.
             // It takes the combined gear object and a callback.
             this.itemPreview.loadItemReferenceIds(
-                gear.itemHashes
-                    .concat(gear.dyeHashes)
-                    .concat(gear.customizationHashes),
+                gear.itemHashes.concat(gear.dyeHashes),
                 null, // We can pass a specific shader here if we want to override
                 (success) => { // Callback on completion
                     if (success) {
                         console.log(`Character ${this.characterData.characterId} rendered successfully.`);
                         // Apply the specific dyes and customization after loading the assets
-                        this.itemPreview.setDyes(this.renderData.customDyes); // This is the correct format
-                        this.itemPreview.setCustomization(this.renderData.customization.options);
+                        this.itemPreview.setDyes(this.renderData.customDyes);
                         this.itemPreview.startAnimating();
                     } else {
                         console.error(`Failed to render character ${this.characterData.characterId}.`);
