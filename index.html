@@ -1296,6 +1296,7 @@
         }
 
         function showContent() {
+            loginContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
@@ -2684,7 +2685,7 @@
         }
 
         function openSettingsModal() {
-            if (!settingsModal.classList.contains('visible')) settingsModal.classList.add('visible');
+            settingsModal.classList.add('visible');
             populateVisibilityOptions();
             populateOrderList();
         }
@@ -2694,11 +2695,10 @@
             for (const sectionId in mainContentSectionElements) {
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
-                    const h2 = element.querySelector('h2');
-                    const sectionName = h2 ? h2.textContent : sectionId;
+                    const label = document.createElement('label');
                     label.innerHTML = `
                         <input type="checkbox" data-section-id="${sectionId}" ${userSettings.sectionVisibility[sectionId] ? 'checked' : ''}>
-                        ${sectionName}
+                        ${element.querySelector('h2')?.textContent || sectionId}
                     `;
                     label.querySelector('input').addEventListener('change', (e) => {
                         playButtonClickSound();
@@ -2718,13 +2718,12 @@
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const li = document.createElement('li');
-                    const h2 = element.querySelector('h2');
-                    li.textContent = h2 ? h2.textContent : sectionId;
+                    li.textContent = element.querySelector('h2')?.textContent || sectionId;
                     sectionOrderList.appendChild(li);
                 }
             });
         }
     </script>
 </body>
-  
+ 
 </html>
