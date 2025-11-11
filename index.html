@@ -1616,6 +1616,13 @@
             }
         }
 
+        function formatSeconds(seconds) {
+            if (!seconds || seconds === 0) return '0h 0m';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
         async function displayClanLeaderboard(groupId, activityMode = 'allpvp') {
             const leaderboardContainer = document.getElementById('clanLeaderboard');
             leaderboardContainer.innerHTML = '<h4>Leaderboard</h4><div class="loader"></div>';
@@ -1641,31 +1648,39 @@
                         const statsRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/0/Stats/?modes=${currentActivity.modeId}`, {
                             headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
                         });
+                        
+                        const defaultStats = {
+                            name: `${bungieGlobalDisplayName}#${bungieGlobalDisplayNameCode}`,
+                            kills: 0, deaths: 0, assists: 0, kd: 0, kda: 0, efficiency: 0,
+                            completions: 0, timePlayed: '0h 0m', timePlayedSeconds: 0
+                        };
+
                         const statsData = await statsRes.json();
-                        if (statsData.ErrorCode !== 1) return null;
+                        if (statsData.ErrorCode !== 1) return defaultStats;
 
                         const activityStats = statsData.Response[currentActivity.path]?.allTime;
-                        if (!activityStats) return null;
+                        if (!activityStats) return defaultStats;
 
                         return {
                             name: `${bungieGlobalDisplayName}#${bungieGlobalDisplayNameCode}`,
                             kills: activityStats.kills?.basic.value || 0,
                             deaths: activityStats.deaths?.basic.value || 0,
                             assists: activityStats.assists?.basic.value || 0,
-                            kd: activityStats.killsDeathsRatio?.basic.value || 0,
+                            kd: activityStats.killsDeathsRatio?.basic.value || 0, 
                             kda: activityStats.killsDeathsAssists?.basic.value || 0,
                             efficiency: activityStats.efficiency?.basic.value || 0,
                             completions: activityStats.activitiesCleared?.basic.value || 0,
-                            timePlayed: activityStats.secondsPlayed?.basic.displayValue || '0h',
+                            timePlayed: formatSeconds(activityStats.secondsPlayed?.basic.value),
                             timePlayedSeconds: activityStats.secondsPlayed?.basic.value || 0
                         };
                     } catch (e) {
                         console.error(`Impossible de récupérer les stats pour ${bungieGlobalDisplayName}`, e);
-                        return null;
+                        // Retourne les stats par défaut en cas d'erreur réseau pour ce membre
+                        return { name: `${bungieGlobalDisplayName}#${bungieGlobalDisplayNameCode}`, kills: 0, deaths: 0, assists: 0, kd: 0, kda: 0, efficiency: 0, completions: 0, timePlayed: '0h 0m', timePlayedSeconds: 0 };
                     }
                 });
 
-                let allStats = (await Promise.all(memberStatsPromises)).filter(s => s !== null);
+                let allStats = await Promise.all(memberStatsPromises);
 
                 const renderTable = (sortBy, sortOrder = 'desc') => {
                     allStats.sort((a, b) => {
