@@ -892,6 +892,11 @@
             </div>
         </div>
 
+        <div id="settingsPageContainer" class="content-container hidden">
+            <h2>Paramètres</h2>
+            <div id="settingsContent"></div>
+        </div>
+
         <div id="itemDetailModal" class="modal-overlay">
             <div class="modal-content">
                 <span id="itemDetailCloseBtn" class="modal-close">&times;</span>
@@ -975,34 +980,6 @@
             </div>
         </div>
 
-        <div id="settingsModal" class="modal-overlay">
-            <div class="modal-content">
-                <span id="settingsCloseBtn" class="modal-close">&times;</span>
-                <h2>Paramètres</h2>
-
-                <div class="settings-section">
-                    <h3>Sons</h3>
-                    <label class="switch">
-                        <input type="checkbox" id="toggleButtonSounds">
-                        <span class="slider round"></span>
-                    </label>
-                    <label for="toggleButtonSounds">Activer les sons des boutons</label>
-                    <audio id="buttonClickSound" src="https://www.soundjay.com/button/button-1.mp3" preload="auto"></audio>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Visibilité des sections</h3>
-                    <div id="sectionVisibilityOptions"></div>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Ordre des sections</h3>
-                    <ul id="sectionOrderList"></ul>
-                </div>
-
-                <button id="resetSettingsBtn" class="action-button">Réinitialiser les paramètres</button>
-            </div>
-        </div>
     </main>
 
     <script>
@@ -1053,13 +1030,8 @@
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
         const settingsBtn = document.getElementById('settingsBtn');
-        const settingsModal = document.getElementById('settingsModal');
-        const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-        const toggleButtonSounds = document.getElementById('toggleButtonSounds');
-        const buttonClickSound = document.getElementById('buttonClickSound');
-        const sectionVisibilityOptions = document.getElementById('sectionVisibilityOptions');
-        const sectionOrderList = document.getElementById('sectionOrderList');
-        const resetSettingsBtn = document.getElementById('resetSettingsBtn');
+        const settingsPageContainer = document.getElementById('settingsPageContainer');
+        const settingsContent = document.getElementById('settingsContent');
 
         const perkDefinitionsCache = {};
         let currentUserInfo = null;
@@ -1297,18 +1269,12 @@
 
         function showContent() {
             loginContainer.classList.add('hidden');
+            settingsPageContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
             refreshBtn.classList.remove('hidden');
-            communityContainer.classList.remove('hidden');
-            questsContainer.classList.remove('hidden');
-            vendorsContainer.classList.remove('hidden');
-            loadoutsContainer.classList.remove('hidden');
-            clanLoadoutsContainer.classList.remove('hidden');
-            clanContainer.classList.remove('hidden');
-            historyContainer.classList.remove('hidden');
 
             applyVisibilitySettings();
             applyOrderSettings();
@@ -2594,30 +2560,6 @@
             }
         }
 
-        settingsBtn.addEventListener('click', () => {
-            playButtonClickSound();
-            openSettingsModal();
-        });
-
-        settingsCloseBtn.addEventListener('click', () => {
-            playButtonClickSound();
-            settingsModal.classList.remove('visible');
-        });
-
-        toggleButtonSounds.addEventListener('change', () => {
-            userSettings.buttonSounds = toggleButtonSounds.checked;
-            saveSettings();
-            playButtonClickSound();
-        });
-
-        resetSettingsBtn.addEventListener('click', () => {
-            playButtonClickSound();
-            if (confirm("Êtes-vous sûr de vouloir réinitialiser tous les paramètres ?")) {
-                localStorage.removeItem('destinyUserSettings');
-                window.location.reload(); 
-            }
-        });
-
         function loadSettings() {
             const savedSettings = localStorage.getItem('destinyUserSettings');
             if (savedSettings) {
@@ -2646,7 +2588,7 @@
         }
 
         function applySoundSetting() {
-            toggleButtonSounds.checked = userSettings.buttonSounds;
+            if(document.getElementById('toggleButtonSounds')) document.getElementById('toggleButtonSounds').checked = userSettings.buttonSounds;
         }
 
         const mainContentSectionElements = {
@@ -2665,7 +2607,7 @@
             for (const sectionId in mainContentSectionElements) {
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
-                    if (userSettings.sectionVisibility[sectionId]) {
+                    if (userSettings.sectionVisibility[sectionId] === undefined || userSettings.sectionVisibility[sectionId]) {
                         element.classList.remove('hidden');
                     } else {
                         element.classList.add('hidden');
@@ -2684,46 +2626,101 @@
             });
         }
 
-        function openSettingsModal() {
-            settingsModal.classList.add('visible');
-            populateVisibilityOptions();
-            populateOrderList();
-        }
+        function showSettingsPage() {
+            loginContainer.classList.add('hidden');
+            contentContainer.classList.add('hidden');
+            settingsPageContainer.classList.remove('hidden');
 
-        function populateVisibilityOptions() {
-            sectionVisibilityOptions.innerHTML = '';
+            settingsContent.innerHTML = `
+                <div class="settings-section">
+                    <h3>Sons</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleButtonSounds">
+                        <span class="slider round"></span>
+                    </label>
+                    <label for="toggleButtonSounds">Activer les sons des boutons</label>
+                    <audio id="buttonClickSound" src="https://www.soundjay.com/button/button-1.mp3" preload="auto"></audio>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Visibilité des sections</h3>
+                    <div id="sectionVisibilityOptions"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Ordre des sections</h3>
+                    <ul id="sectionOrderList"></ul>
+                </div>
+
+                <button id="resetSettingsBtn" class="action-button" style="background-color: #c0392b;">Réinitialiser</button>
+                <button id="backToAppBtn" class="action-button">Retour</button>
+            `;
+
+            const sectionVisibilityOptionsDiv = document.getElementById('sectionVisibilityOptions');
             for (const sectionId in mainContentSectionElements) {
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const label = document.createElement('label');
+                    const h2 = element.querySelector('h2');
+                    const sectionName = h2 ? h2.textContent : sectionId;
+                    const isChecked = userSettings.sectionVisibility[sectionId] === undefined || userSettings.sectionVisibility[sectionId];
                     label.innerHTML = `
-                        <input type="checkbox" data-section-id="${sectionId}" ${userSettings.sectionVisibility[sectionId] ? 'checked' : ''}>
-                        ${element.querySelector('h2')?.textContent || sectionId}
+                        <input type="checkbox" data-section-id="${sectionId}" ${isChecked ? 'checked' : ''}>
+                        ${sectionName}
                     `;
                     label.querySelector('input').addEventListener('change', (e) => {
                         playButtonClickSound();
                         userSettings.sectionVisibility[sectionId] = e.target.checked;
                         saveSettings();
-                        applyVisibilitySettings();
                     });
-                    sectionVisibilityOptions.appendChild(label);
-                    sectionVisibilityOptions.appendChild(document.createElement('br'));
+                    sectionVisibilityOptionsDiv.appendChild(label);
+                    sectionVisibilityOptionsDiv.appendChild(document.createElement('br'));
                 }
             }
-        }
 
-        function populateOrderList() {
-            sectionOrderList.innerHTML = '';
+            const sectionOrderListUl = document.getElementById('sectionOrderList');
             userSettings.sectionOrder.forEach((sectionId, index) => {
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const li = document.createElement('li');
-                    li.textContent = element.querySelector('h2')?.textContent || sectionId;
-                    sectionOrderList.appendChild(li);
+                    const h2 = element.querySelector('h2');
+                    li.textContent = h2 ? h2.textContent : sectionId;
+                    sectionOrderListUl.appendChild(li);
+                }
+            });
+
+            document.getElementById('toggleButtonSounds').checked = userSettings.buttonSounds;
+            document.getElementById('toggleButtonSounds').addEventListener('change', (e) => {
+                userSettings.buttonSounds = e.target.checked;
+                saveSettings();
+                playButtonClickSound();
+            });
+
+            document.getElementById('resetSettingsBtn').addEventListener('click', () => {
+                playButtonClickSound();
+                if (confirm("Êtes-vous sûr de vouloir réinitialiser tous les paramètres ?")) {
+                    localStorage.removeItem('destinyUserSettings');
+                    window.location.reload(); 
+                }
+            });
+
+            document.getElementById('backToAppBtn').addEventListener('click', () => {
+                playButtonClickSound();
+                const session = getSessionFromCache();
+                if (session) {
+                    showContent();
+                } else {
+                    settingsPageContainer.classList.add('hidden');
+                    loginContainer.classList.remove('hidden');
                 }
             });
         }
+
+        settingsBtn.addEventListener('click', () => {
+            playButtonClickSound();
+            showSettingsPage();
+        });
     </script>
 </body>
- 
+  
 </html>
