@@ -79,6 +79,17 @@
             background-color: var(--accent-color);
             color: var(--bg-color);
         }
+        #settingsBtn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        #settingsBtn:hover { background-color: var(--text-color); color: var(--bg-color); }
 
         .login-container, .content-container {
             background: var(--primary-color);
@@ -771,6 +782,64 @@
         #pgcrContent .current-player-row {
             background-color: rgba(82, 148, 226, 0.3);
         }
+
+        .settings-section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .settings-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+        .settings-section label {
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+            vertical-align: middle;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:focus + .slider { box-shadow: 0 0 1px var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(16px); }
+        .slider.round { border-radius: 24px; }
+        .slider.round:before { border-radius: 50%; }
+
+        #sectionOrderList { list-style: none; padding: 0; }
+        #sectionOrderList li {
+            background-color: rgba(0,0,0,0.2);
+            padding: 10px;
+            margin-bottom: 5px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
     </style>
 </head>
 
@@ -780,6 +849,7 @@
         <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
         <button id="refreshBtn" class="hidden">Rafraîchir</button>
+        <button id="settingsBtn">Paramètres</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
     </header>
 
@@ -904,12 +974,40 @@
                 </div>
             </div>
         </div>
+
+        <div id="settingsModal" class="modal-overlay">
+            <div class="modal-content">
+                <span id="settingsCloseBtn" class="modal-close">&times;</span>
+                <h2>Paramètres</h2>
+
+                <div class="settings-section">
+                    <h3>Sons</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleButtonSounds">
+                        <span class="slider round"></span>
+                    </label>
+                    <label for="toggleButtonSounds">Activer les sons des boutons</label>
+                    <audio id="buttonClickSound" src="https://www.soundjay.com/button/button-1.mp3" preload="auto"></audio>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Visibilité des sections</h3>
+                    <div id="sectionVisibilityOptions"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Ordre des sections</h3>
+                    <ul id="sectionOrderList"></ul>
+                </div>
+
+                <button id="resetSettingsBtn" class="action-button">Réinitialiser les paramètres</button>
+            </div>
+        </div>
     </main>
 
     <script>
         const BUNGIE_CLIENT_ID = "51007";
         const BUNGIE_API_KEY = "d1fc55de14f441619f05e51c761dcca6";
-
         const loginContainer = document.getElementById('loginContainer');
         const contentContainer = document.getElementById('contentContainer');
         const loginBtn = document.getElementById('loginBtn');
@@ -954,11 +1052,29 @@
         const pgcrModal = document.getElementById('pgcrModal');
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+        const toggleButtonSounds = document.getElementById('toggleButtonSounds');
+        const buttonClickSound = document.getElementById('buttonClickSound');
+        const sectionVisibilityOptions = document.getElementById('sectionVisibilityOptions');
+        const sectionOrderList = document.getElementById('sectionOrderList');
+        const resetSettingsBtn = document.getElementById('resetSettingsBtn');
+
         const perkDefinitionsCache = {};
         let currentUserInfo = null;
         let refreshIntervalId = null;
         let fullProfileData = null; 
         let currentLoadoutBuilder = {};
+        let userSettings = {
+            buttonSounds: true,
+            sectionOrder: [
+                'profileData', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
+                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
+                'historyContainer'
+            ],
+            sectionVisibility: {} 
+        };
 
         loginBtn.addEventListener('click', () => {
             const authUrl = `https://www.bungie.net/fr/OAuth/Authorize?client_id=${BUNGIE_CLIENT_ID}&response_type=code`;
@@ -970,6 +1086,7 @@
             displaySearchHistory();
             displayLoadouts();
             displayClanLoadouts();
+            loadSettings();
             if (session) {
                 showContent();
                 if (Date.now() > session.accessTokenExpiresAt) {
@@ -991,6 +1108,7 @@
         };
 
         logoutBtn.addEventListener('click', () => {
+            playButtonClickSound();
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
             }
@@ -999,6 +1117,7 @@
         });
 
         refreshBtn.addEventListener('click', () => {
+            playButtonClickSound();
             const session = getSessionFromCache();
             if (session) {
                 loadingDiv.classList.remove('hidden');
@@ -1009,10 +1128,12 @@
         });
 
         itemDetailCloseBtn.addEventListener('click', () => {
+            playButtonClickSound();
             itemDetailModal.classList.remove('visible');
         });
 
         playerProfileModalCloseBtn.addEventListener('click', () => {
+            playButtonClickSound();
             playerProfileModal.classList.remove('visible');
             document.getElementById('playerProfileContent').innerHTML = '<div class="loader"></div>';
         });
@@ -1022,10 +1143,12 @@
         });
 
         loadoutBuilderCloseBtn.addEventListener('click', () => {
+            playButtonClickSound();
             loadoutBuilderModal.classList.remove('visible');
         });
 
         saveNewLoadoutBtn.addEventListener('click', () => {
+            playButtonClickSound();
             const loadoutName = document.getElementById('newLoadoutName').value.trim();
             if (!loadoutName) {
                 alert("Veuillez donner un nom à votre équipement.");
@@ -1041,6 +1164,7 @@
         });
 
         importLoadoutBtn.addEventListener('click', () => {
+            playButtonClickSound();
             const code = document.getElementById('importLoadoutInput').value.trim();
             if (code) {
                 importLoadoutFromCode(code);
@@ -1049,10 +1173,12 @@
         });
 
         createClanLoadoutBtn.addEventListener('click', () => {
+            playButtonClickSound();
             openLoadoutBuilder('clan');
         });
 
         importClanLoadoutBtn.addEventListener('click', () => {
+            playButtonClickSound();
             const code = importClanLoadoutInput.value.trim();
             if (code) {
                 importLoadoutFromCode(code, 'clan');
@@ -1061,10 +1187,12 @@
         });
 
         pgcrModalCloseBtn.addEventListener('click', () => {
+            playButtonClickSound();
             pgcrModal.classList.remove('visible');
         });
 
         searchPlayerBtn.addEventListener('click', async () => {
+            playButtonClickSound();
             const searchInput = document.getElementById('searchPlayerInput');
             const bungieNameFull = searchInput.value.trim();
 
@@ -1181,6 +1309,10 @@
             clanLoadoutsContainer.classList.remove('hidden');
             clanContainer.classList.remove('hidden');
             historyContainer.classList.remove('hidden');
+
+            applyVisibilitySettings();
+            applyOrderSettings();
+            applySoundSetting();
         }
 
 
@@ -1302,6 +1434,7 @@
                 refreshTokenExpiresAt: Date.now() + (refreshExpiresIn * 1000),
                 membershipId: membershipId
             };
+            userSettings.sectionVisibility = {}; 
             localStorage.setItem('destinySession', JSON.stringify(session));
         }
 
@@ -1311,6 +1444,10 @@
         }
 
         async function displayData(data) {
+            if (!data) {
+                console.error("No data to display.");
+                return;
+            }
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.remove('hidden');
 
@@ -1347,10 +1484,6 @@
                 }
     
                 vaultDisplayContainer.classList.remove('hidden');
-                communityContainer.classList.remove('hidden');
-                questsContainer.classList.remove('hidden');
-                vendorsContainer.classList.remove('hidden');
-                loadoutsContainer.classList.remove('hidden');
             }
 
             for (const characterId of characterIds) {
@@ -1655,7 +1788,7 @@
                 leaderboardContainer.id = 'clanLeaderboard';
                 leaderboardContainer.className = 'leaderboard-container';
                 clanInfoDiv.appendChild(leaderboardContainer);
-                await displayClanLeaderboard(groupId, 'allpvp'); 
+                await displayClanLeaderboard(groupId, 'allpvp');
 
             } catch (error) {
                 console.error("Erreur lors du chargement initial des informations du clan:", error);
@@ -1714,6 +1847,7 @@
                     `;
                     activityItem.addEventListener('click', () => showPgcr(activity.activityDetails.instanceId));
                     historyListDiv.appendChild(activityItem);
+                    historyListDiv.appendChild(document.createElement('hr'));
                 }
             } catch (error) {
                 historyListDiv.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement de l'historique: ${error.message}</p>`;
@@ -1726,7 +1860,7 @@
             pgcrContent.innerHTML = '<div class="loader"></div>';
 
             try {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 100)); 
                 const pgcrRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Stats/PostGameCarnageReport/${activityId}/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
@@ -1820,7 +1954,7 @@
                             kills: activityStats.kills?.basic.value || 0,
                             deaths: activityStats.deaths?.basic.value || 0,
                             assists: activityStats.assists?.basic.value || 0,
-                            kd: activityStats.killsDeathsRatio?.basic.value || 0, 
+                            kd: activityStats.killsDeathsRatio?.basic.value || 0,
                             kda: activityStats.killsDeathsAssists?.basic.value || 0,
                             efficiency: activityStats.efficiency?.basic.value || 0,
                             completions: activityStats.activitiesCleared?.basic.value || 0,
@@ -1981,6 +2115,10 @@
             card.style.backgroundPosition = 'center';
 
             if (isOwnProfile) {
+                if (!data.characterEquipment || !data.characterEquipment.data || !data.characterEquipment.data[characterId]) {
+                    console.warn(`No equipment data for character ${characterId}. Skipping loadout save section.`);
+                    return card;
+                }
                 const loadoutSaveSection = document.createElement('div');
                 loadoutSaveSection.className = 'loadout-save-section';
                 loadoutSaveSection.innerHTML = `
@@ -1990,6 +2128,7 @@
                 loadoutSaveSection.querySelector('.save-loadout-btn').addEventListener('click', (e) => {
                     const input = e.target.previousElementSibling;
                     const loadoutName = input.value.trim();
+                    playButtonClickSound();
                     if (loadoutName) {
                         saveLoadout(characterId, loadoutName, data);
                         input.value = '';
@@ -2027,6 +2166,7 @@
             itemElement.innerHTML = `<span class="item-power" title="Niveau de Lumière">⟡ ${power}</span>${quantityHtml}`;
             itemElement.prepend(img);
             itemElement.addEventListener('click', (e) => { 
+                playButtonClickSound();
                 e.stopPropagation(); 
                 showItemDetailModal(item, data, characterId); 
             });
@@ -2122,6 +2262,7 @@
         }
 
         function handleApiError(error) {
+            playButtonClickSound();
             console.error("Une erreur API est survenue:", error);
             loadingDiv.classList.add('hidden');
             profileDataDiv.classList.add('hidden');
@@ -2224,6 +2365,7 @@
 
                 const equipButton = loadoutDiv.querySelector('.equip-btn');
                 equipButton.addEventListener('click', async () => {
+                    playButtonClickSound();
                     equipButton.disabled = true;
                     equipButton.textContent = '...';
                     await equipLoadout(loadout);
@@ -2233,6 +2375,7 @@
 
                 const deleteButton = loadoutDiv.querySelector('.delete-btn');
                 deleteButton.addEventListener('click', () => {
+                    playButtonClickSound();
                     if (confirm("Êtes-vous sûr de vouloir supprimer cet équipement ?")) {
                         loadouts.splice(index, 1);
                         localStorage.setItem('destinyLoadouts', JSON.stringify(loadouts));
@@ -2279,6 +2422,7 @@
 
                 const equipButton = loadoutDiv.querySelector('.equip-btn');
                 equipButton.addEventListener('click', async () => {
+                    playButtonClickSound();
                     equipButton.disabled = true;
                     equipButton.textContent = '...';
                     await equipLoadout(loadout);
@@ -2288,6 +2432,7 @@
 
                 const deleteButton = loadoutDiv.querySelector('.delete-btn');
                 deleteButton.addEventListener('click', () => {
+                    playButtonClickSound();
                     if (confirm("Êtes-vous sûr de vouloir supprimer cet équipement de clan ?")) {
                         loadouts.splice(index, 1);
                         localStorage.setItem('destinyClanLoadouts', JSON.stringify(loadouts));
@@ -2306,6 +2451,7 @@
             }
 
             const session = getSessionFromCache();
+            playButtonClickSound();
             alert(`Équipement de "${loadout.name}" en cours...`);
             try {
                 const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItems/', {
@@ -2330,6 +2476,7 @@
         }
 
         function openLoadoutBuilder(type = 'personal') {
+            playButtonClickSound();
             if (!fullProfileData) {
                 alert("Les données du profil ne sont pas encore chargées.");
                 return;
@@ -2369,6 +2516,7 @@
                     itemElement.dataset.itemHash = item.itemHash;
                     itemElement.dataset.bucketHash = item.bucketHash;
                     itemElement.classList.add('loadout-builder-item');
+                    itemElement.addEventListener('click', playButtonClickSound);
                     itemElement.addEventListener('click', () => {
                         selectItemForLoadout(item, bucketHash);
                         itemsGrid.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
@@ -2384,6 +2532,7 @@
         }
 
         function selectItemForLoadout(item, bucketHash) {
+            playButtonClickSound();
             currentLoadoutBuilder[bucketHash] = {
                 itemInstanceId: item.itemInstanceId,
                 itemHash: item.itemHash
@@ -2408,6 +2557,7 @@
         }
 
         async function importLoadoutFromCode(code, type = 'personal') {
+            playButtonClickSound();
             try {
                 const itemHashes = JSON.parse(atob(code));
                 const allItems = [
@@ -2442,6 +2592,136 @@
                 alert("Code d'équipement invalide ou corrompu.");
                 console.error("Erreur d'importation :", error);
             }
+        }
+
+        settingsBtn.addEventListener('click', () => {
+            playButtonClickSound();
+            openSettingsModal();
+        });
+
+        settingsCloseBtn.addEventListener('click', () => {
+            playButtonClickSound();
+            settingsModal.classList.remove('visible');
+        });
+
+        toggleButtonSounds.addEventListener('change', () => {
+            userSettings.buttonSounds = toggleButtonSounds.checked;
+            saveSettings();
+            playButtonClickSound();
+        });
+
+        resetSettingsBtn.addEventListener('click', () => {
+            playButtonClickSound();
+            if (confirm("Êtes-vous sûr de vouloir réinitialiser tous les paramètres ?")) {
+                localStorage.removeItem('destinyUserSettings');
+                window.location.reload(); 
+            }
+        });
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('destinyUserSettings');
+            if (savedSettings) {
+                userSettings = JSON.parse(savedSettings);
+            } else {
+                const defaultSectionVisibility = {};
+                const allSectionIds = [
+                    'profileData', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
+                    'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
+                    'historyContainer'
+                ];
+                allSectionIds.forEach(id => defaultSectionVisibility[id] = true);
+                userSettings.sectionVisibility = defaultSectionVisibility;
+            }
+            applySettings();
+        }
+
+        function saveSettings() {
+            localStorage.setItem('destinyUserSettings', JSON.stringify(userSettings));
+        }
+
+        function applySettings() {
+            applySoundSetting();
+            applyVisibilitySettings();
+            applyOrderSettings();
+        }
+
+        function applySoundSetting() {
+            toggleButtonSounds.checked = userSettings.buttonSounds;
+        }
+
+        const mainContentSectionElements = {
+            profileData: document.getElementById('profileData'),
+            vaultDisplayContainer: document.getElementById('vaultDisplayContainer'),
+            communityContainer: document.getElementById('communityContainer'),
+            questsContainer: document.getElementById('questsContainer'),
+            vendorsContainer: document.getElementById('vendorsContainer'),
+            loadoutsContainer: document.getElementById('loadoutsContainer'),
+            clanLoadoutsContainer: document.getElementById('clanLoadoutsContainer'),
+            clanContainer: document.getElementById('clanContainer'),
+            historyContainer: document.getElementById('historyContainer')
+        };
+
+        function applyVisibilitySettings() {
+            for (const sectionId in mainContentSectionElements) {
+                const element = mainContentSectionElements[sectionId];
+                if (element) {
+                    if (userSettings.sectionVisibility[sectionId]) {
+                        element.classList.remove('hidden');
+                    } else {
+                        element.classList.add('hidden');
+                    }
+                }
+            }
+        }
+
+        function applyOrderSettings() {
+            const mainElement = document.querySelector('main');
+            userSettings.sectionOrder.forEach(sectionId => {
+                const element = mainContentSectionElements[sectionId];
+                if (element && mainElement.contains(element)) {
+                    mainElement.appendChild(element);
+                }
+            });
+        }
+
+        function openSettingsModal() {
+            settingsModal.classList.add('visible');
+            populateVisibilityOptions();
+            populateOrderList();
+        }
+
+        function populateVisibilityOptions() {
+            sectionVisibilityOptions.innerHTML = '';
+            for (const sectionId in mainContentSectionElements) {
+                const element = mainContentSectionElements[sectionId];
+                if (element) {
+                    const label = document.createElement('label');
+                    label.innerHTML = `
+                        <input type="checkbox" data-section-id="${sectionId}" ${userSettings.sectionVisibility[sectionId] ? 'checked' : ''}>
+                        ${element.querySelector('h2')?.textContent || sectionId}
+                    `;
+                    label.querySelector('input').addEventListener('change', (e) => {
+                        playButtonClickSound();
+                        userSettings.sectionVisibility[sectionId] = e.target.checked;
+                        saveSettings();
+                        applyVisibilitySettings();
+                    });
+                    sectionVisibilityOptions.appendChild(label);
+                    sectionVisibilityOptions.appendChild(document.createElement('br'));
+                }
+            }
+        }
+
+        function populateOrderList() {
+            sectionOrderList.innerHTML = '';
+            userSettings.sectionOrder.forEach((sectionId, index) => {
+                const element = mainContentSectionElements[sectionId];
+                if (element) {
+                    const li = document.createElement('li');
+                    li.textContent = element.querySelector('h2')?.textContent || sectionId;
+                    sectionOrderList.appendChild(li);
+                }
+            });
         }
     </script>
 </body>
