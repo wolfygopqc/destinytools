@@ -745,6 +745,32 @@
             border-color: var(--accent-color);
             color: var(--bg-color);
         }
+
+        #historyContainer .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.2);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #historyContainer .activity-item:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        #historyContainer .activity-item img {
+            width: 48px;
+            height: 48px;
+        }
+        #pgcrContent table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        #pgcrContent .current-player-row {
+            background-color: rgba(82, 148, 226, 0.3);
+        }
     </style>
 </head>
 
@@ -842,6 +868,11 @@
             <div id="clanInfo"></div>
         </div>
 
+        <div id="historyContainer" class="content-container hidden">
+            <h2>Historique des Activités</h2>
+            <div id="historyList"></div>
+        </div>
+
         <div id="playerProfileModal" class="modal-overlay">
             <div class="modal-content" style="max-width: 1400px;">
                 <span id="playerProfileModalCloseBtn" class="modal-close">&times;</span>
@@ -862,6 +893,14 @@
                 <div id="loadoutBuilderActions">
                     <input type="text" id="newLoadoutName" placeholder="Nom de l'équipement">
                     <button id="saveNewLoadoutBtn" class="action-button" style="width: auto;">Sauvegarder</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pgcrModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 1200px;">
+                <span id="pgcrModalCloseBtn" class="modal-close">&times;</span>
+                <div id="pgcrContent">
                 </div>
             </div>
         </div>
@@ -911,6 +950,9 @@
         const loadoutBuilderItemsContainer = document.getElementById('loadoutBuilderItemsContainer');
         const playerProfileModalCloseBtn = document.getElementById('playerProfileModalCloseBtn');
         const errorDisplayDiv = document.createElement('div');
+        const historyContainer = document.getElementById('historyContainer');
+        const pgcrModal = document.getElementById('pgcrModal');
+        const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
         const perkDefinitionsCache = {};
         let currentUserInfo = null;
@@ -1016,6 +1058,10 @@
                 importLoadoutFromCode(code, 'clan');
                 importClanLoadoutInput.value = '';
             }
+        });
+
+        pgcrModalCloseBtn.addEventListener('click', () => {
+            pgcrModal.classList.remove('visible');
         });
 
         searchPlayerBtn.addEventListener('click', async () => {
@@ -1134,6 +1180,7 @@
             loadoutsContainer.classList.remove('hidden');
             clanLoadoutsContainer.classList.remove('hidden');
             clanContainer.classList.remove('hidden');
+            historyContainer.classList.remove('hidden');
         }
 
 
@@ -1397,6 +1444,8 @@
 
             await displayVendors(data);
 
+            await displayActivityHistory(data);
+
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
             }
@@ -1606,13 +1655,107 @@
                 leaderboardContainer.id = 'clanLeaderboard';
                 leaderboardContainer.className = 'leaderboard-container';
                 clanInfoDiv.appendChild(leaderboardContainer);
-                // On affiche le leaderboard PvP par défaut
                 await displayClanLeaderboard(groupId, 'allpvp'); 
 
             } catch (error) {
                 console.error("Erreur lors du chargement initial des informations du clan:", error);
                 clanInfoDiv.innerHTML = '<p style="text-align: center; color: #ff7b7b;">Erreur lors du chargement des informations du clan.</p>';
                 clanContainer.classList.remove('hidden');
+            }
+        }
+
+        async function displayActivityHistory(profileData) {
+            const historyListDiv = document.getElementById('historyList');
+            historyListDiv.innerHTML = '<div class="loader"></div>';
+            const { membershipType, membershipId } = currentUserInfo;
+            const characterIds = profileData.profile.data.characterIds;
+
+            try {
+                let allActivities = [];
+                for (const charId of characterIds) {
+                    const historyRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/${charId}/Stats/ActivityHistory/?count=25&mode=0`, {
+                        headers: { 'X-API-Key': BUNGIE_API_KEY }
+                    });
+                    const historyData = await historyRes.json();
+                    if (historyData.ErrorCode === 1 && historyData.Response.activities) {
+                        allActivities.push(...historyData.Response.activities);
+                    }
+                }
+
+                allActivities.sort((a, b) => new Date(b.period) - new Date(a.period));
+
+                historyListDiv.innerHTML = '';
+                for (const activity of allActivities.slice(0, 50)) {
+                    const activityDef = await getDefinition('DestinyActivityDefinition', activity.activityDetails.directorActivityHash);
+                    if (!activityDef) continue;
+
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'activity-item';
+                    
+                    const isWin = activity.values.standing?.basic.value === 0;
+                    const outcomeText = activity.values.standing ? (isWin ? 'Victoire' : 'Défaite') : '';
+
+                    activityItem.innerHTML = `
+                        <img src="https://www.bungie.net${activityDef.pgcrImage || activityDef.displayProperties.icon}" alt="">
+                        <div>
+                            <strong>${activityDef.displayProperties.name}</strong>
+                            <p>${activityDef.displayProperties.description || ''} - <span style="color: ${isWin ? '#a5d6a7' : '#ef9a9a'}">${outcomeText}</span></p>
+                            <small>${new Date(activity.period).toLocaleString('fr-FR')}</small>
+                        </div>
+                    `;
+                    activityItem.addEventListener('click', () => showPgcr(activity.activityDetails.instanceId));
+                    historyListDiv.appendChild(activityItem);
+                }
+            } catch (error) {
+                historyListDiv.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement de l'historique: ${error.message}</p>`;
+            }
+        }
+
+        async function showPgcr(activityId) {
+            const pgcrContent = document.getElementById('pgcrContent');
+            pgcrModal.classList.add('visible');
+            pgcrContent.innerHTML = '<div class="loader"></div>';
+
+            try {
+                const pgcrRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Stats/PostGameCarnageReport/${activityId}/`, {
+                    headers: { 'X-API-Key': BUNGIE_API_KEY }
+                });
+                const pgcrData = await pgcrRes.json();
+                if (pgcrData.ErrorCode !== 1) throw new Error(pgcrData.Message);
+
+                const pgcr = pgcrData.Response;
+                const activityDef = await getDefinition('DestinyActivityDefinition', pgcr.activityDetails.directorActivityHash);
+
+                let tableHtml = `
+                    <h3>${activityDef.displayProperties.name}</h3>
+                    <p>${new Date(pgcr.period).toLocaleString('fr-FR')}</p>
+                    <table>
+                        <thead>
+                            <tr><th>Joueur</th><th>Classe</th><th>Frags</th><th>Morts</th><th>Aides</th><th>Efficacité</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                for (const entry of pgcr.entries) {
+                    const isCurrentUser = entry.player.destinyUserInfo.membershipId === currentUserInfo.membershipId;
+                    const classDef = await getDefinition('DestinyClassDefinition', entry.player.characterClass);
+                    tableHtml += `
+                        <tr class="${isCurrentUser ? 'current-player-row' : ''}">
+                            <td>${entry.player.destinyUserInfo.bungieGlobalDisplayName}#${entry.player.destinyUserInfo.bungieGlobalDisplayNameCode}</td>
+                            <td>${classDef?.displayProperties.name || 'Inconnue'}</td>
+                            <td>${entry.values.kills.basic.displayValue}</td>
+                            <td>${entry.values.deaths.basic.displayValue}</td>
+                            <td>${entry.values.assists.basic.displayValue}</td>
+                            <td>${entry.values.efficiency.basic.displayValue}</td>
+                        </tr>
+                    `;
+                }
+
+                tableHtml += '</tbody></table>';
+                pgcrContent.innerHTML = tableHtml;
+
+            } catch (error) {
+                pgcrContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du rapport de partie : ${error.message}</p>`;
             }
         }
 
@@ -1676,7 +1819,6 @@
                         };
                     } catch (e) {
                         console.error(`Impossible de récupérer les stats pour ${bungieGlobalDisplayName}`, e);
-                        // Retourne les stats par défaut en cas d'erreur réseau pour ce membre
                         return { name: `${bungieGlobalDisplayName}#${bungieGlobalDisplayNameCode}`, kills: 0, deaths: 0, assists: 0, kd: 0, kda: 0, efficiency: 0, completions: 0, timePlayed: '0h 0m', timePlayedSeconds: 0 };
                     }
                 });
