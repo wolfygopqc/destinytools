@@ -1673,11 +1673,10 @@
             try {
                 let allActivities = [];
                 for (const charId of characterIds) {
-                    const historyRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/${charId}/Stats/ActivityHistory/?count=25&mode=0`, {
+                    const historyRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/${charId}/Stats/Activities/?count=25&mode=0`, {
                         headers: { 'X-API-Key': BUNGIE_API_KEY }
                     });
                     if (!historyRes.ok) {
-                        // Si la réponse n'est pas OK (ex: 404, 500), on passe au personnage suivant.
                         console.warn(`Impossible de charger l'historique pour le personnage ${charId}. Status: ${historyRes.status}`);
                         continue;
                     }
@@ -1691,7 +1690,7 @@
 
                 historyListDiv.innerHTML = '';
                 if (allActivities.length === 0) {
-                    historyListDiv.innerHTML = `<p style="color: rgba(240, 240, 240, 0.7);">Aucune activité trouvée. L'historique est peut-être privé.</p>`;
+                    historyListDiv.innerHTML = `<p style="color: rgba(240, 240, 240, 0.7);">Aucune activité trouvée. Votre historique de jeu est peut-être privé. <a href="https://www.bungie.net/fr/Profile/Settings?category=Privacy" target="_blank" style="color: var(--accent-color);">Vérifiez vos paramètres de confidentialité sur Bungie.net</a>.</p>`;
                     return;
                 }
 
