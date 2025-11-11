@@ -1676,6 +1676,11 @@
                     const historyRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/${charId}/Stats/ActivityHistory/?count=25&mode=0`, {
                         headers: { 'X-API-Key': BUNGIE_API_KEY }
                     });
+                    if (!historyRes.ok) {
+                        // Si la réponse n'est pas OK (ex: 404, 500), on passe au personnage suivant.
+                        console.warn(`Impossible de charger l'historique pour le personnage ${charId}. Status: ${historyRes.status}`);
+                        continue;
+                    }
                     const historyData = await historyRes.json();
                     if (historyData.ErrorCode === 1 && historyData.Response.activities) {
                         allActivities.push(...historyData.Response.activities);
@@ -1685,6 +1690,11 @@
                 allActivities.sort((a, b) => new Date(b.period) - new Date(a.period));
 
                 historyListDiv.innerHTML = '';
+                if (allActivities.length === 0) {
+                    historyListDiv.innerHTML = `<p style="color: rgba(240, 240, 240, 0.7);">Aucune activité trouvée. L'historique est peut-être privé.</p>`;
+                    return;
+                }
+
                 for (const activity of allActivities.slice(0, 50)) {
                     const activityDef = await getDefinition('DestinyActivityDefinition', activity.activityDetails.directorActivityHash);
                     if (!activityDef) continue;
