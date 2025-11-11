@@ -1279,7 +1279,6 @@
         const pgcrModal = document.getElementById('pgcrModal');
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
-        const collectionsContainer = document.getElementById('collectionsContainer');
         const settingsContainer = document.getElementById('settingsContainer');
         const settingsContent = document.getElementById('settingsContent');
 
@@ -1294,7 +1293,7 @@
             sectionOrder: [
                 'theme',
                 'contentContainer', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
-                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer', 'collectionsContainer',
+                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
                 'historyContainer'
             ],
             sectionVisibility: {} 
@@ -1785,10 +1784,6 @@
                 vaultDisplayContainer.classList.remove('hidden');
             }
 
-            // Affichage de l'inventaire global
-            await displayFullInventory(data);
-            setupInventoryTabs();
-
             for (const characterId of characterIds) {
                 const characterCard = await createCharacterCard(characterId, data, itemInstances, true);
                 if (characterCard) {
@@ -1880,7 +1875,6 @@
 
             await displayVendors(data);
 
-            await displayCollections(data);
             await displayActivityHistory(data);
 
             if (refreshIntervalId) {
@@ -1896,88 +1890,6 @@
                     clearInterval(refreshIntervalId);
                 }
             }, 300000);
-        }
-
-        function setupInventoryTabs() {
-            const tabControls = document.getElementById('inventoryTabControls');
-            const tabContents = vaultDisplayContainer.querySelectorAll('.tab-content');
-
-            tabControls.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
-                    const tabId = e.target.dataset.tab;
-
-                    tabControls.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-
-                    tabContents.forEach(content => {
-                        if (content.id === tabId) {
-                            content.classList.add('active');
-                        } else {
-                            content.classList.remove('active');
-                        }
-                    });
-                }
-            });
-        }
-
-        async function displayFullInventory(data) {
-            const allItems = [
-                ...(data.profileInventory?.data?.items || []),
-                ...Object.values(data.characterInventories?.data || {}).flatMap(inv => inv.items)
-            ];
-
-            const weaponBucketHashes = [1498876634, 2465295065, 953998645];
-            const armorBucketHashes = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
-
-            const allWeapons = allItems.filter(item => weaponBucketHashes.includes(item.bucketHash));
-            const allArmor = allItems.filter(item => armorBucketHashes.includes(item.bucketHash));
-
-            const weaponsGrid = document.querySelector('#allWeaponsContent .inventory-grid');
-            const armorGrid = document.querySelector('#allArmorContent .inventory-grid');
-            weaponsGrid.innerHTML = '';
-            armorGrid.innerHTML = '';
-
-            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
-
-            for (const weapon of allWeapons) {
-                const itemElement = await createItemElement(weapon, itemInstances, data, 'inventory');
-                weaponsGrid.appendChild(itemElement);
-            }
-            for (const armor of allArmor) {
-                const itemElement = await createItemElement(armor, itemInstances, data, 'inventory');
-                armorGrid.appendChild(itemElement);
-            }
-        }
-
-        async function displayCollections(data) {
-            const collectionsContent = document.getElementById('collectionsContent');
-            collectionsContent.innerHTML = '<div class="loader"></div>';
-            const collectiblesData = data.profileCollectibles.data.collectibles;
-            const rootNode = await getDefinition('DestinyPresentationNodeDefinition', data.profileCollectibles.data.collectionCategoriesRootNodeHash);
-
-            let html = '';
-            for (const categoryNode of rootNode.children.presentationNodes) {
-                const categoryDef = await getDefinition('DestinyPresentationNodeDefinition', categoryNode.presentationNodeHash);
-                html += `<h3 data-node-hash="${categoryDef.hash}">${categoryDef.displayProperties.name}</h3>`;
-                html += `<div class="collection-grid" id="collection-node-${categoryDef.hash}">`;
-                for (const collectibleNode of categoryDef.children.collectibles) {
-                    const collectibleDef = await getDefinition('DestinyCollectibleDefinition', collectibleNode.collectibleHash);
-                    const state = collectiblesData[collectibleNode.collectibleHash].state;
-                    const isAcquired = !(state & 1); // Le bit 0 à 1 signifie "not acquired"
-                    html += `<div class="collection-item ${isAcquired ? 'acquired' : 'not-acquired'}" title="${collectibleDef.displayProperties.name}">
-                                <img src="https://www.bungie.net${collectibleDef.displayProperties.icon}">
-                             </div>`;
-                }
-                html += `</div>`;
-            }
-            collectionsContent.innerHTML = html;
-
-            collectionsContent.querySelectorAll('h3').forEach(h3 => {
-                h3.addEventListener('click', () => {
-                    const grid = document.getElementById(`collection-node-${h3.dataset.nodeHash}`);
-                    grid.style.display = grid.style.display === 'grid' ? 'none' : 'grid';
-                });
-            });
         }
 
         async function displayVendors(profileData) {
@@ -3050,7 +2962,6 @@
             loadoutsContainer: document.getElementById('loadoutsContainer'),
             clanLoadoutsContainer: document.getElementById('clanLoadoutsContainer'),
             clanContainer: document.getElementById('clanContainer'),
-            collectionsContainer: document.getElementById('collectionsContainer'),
             historyContainer: document.getElementById('historyContainer'),
             settingsContainer: document.getElementById('settingsContainer')
         };
