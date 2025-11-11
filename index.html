@@ -1357,14 +1357,11 @@
             
             const urlParams = new URLSearchParams(window.location.search);
             const authCode = urlParams.get('code');
-
+            
             if (session) {
                 showContent();
-                if (Date.now() > session.accessTokenExpiresAt) {
-                    refreshToken(session.refreshToken);
-                } else {
-                    getProfileDataWithToken(session.accessToken, session.membershipId);
-                }
+                // Démarrer le cycle de rafraîchissement automatique
+                startAutoRefresh();
             } else if (authCode) {
                 showContent();
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -1373,6 +1370,18 @@
                 showLogin();
             }
         };
+
+        function startAutoRefresh() {
+            // Exécute une première fois immédiatement
+            refreshAllData();
+
+            // Arrête l'ancien intervalle s'il existe
+            if (refreshIntervalId) clearInterval(refreshIntervalId);
+
+            // Met en place le nouvel intervalle de 12 secondes
+            // ATTENTION : C'est un intervalle très court qui peut causer des problèmes avec l'API de Bungie.
+            refreshIntervalId = setInterval(refreshAllData, 12000); 
+        }
 
         logoutBtn.addEventListener('click', () => {
             playButtonClickSound();
@@ -1390,7 +1399,7 @@
                 loadingDiv.classList.remove('hidden');
                 profileDataDiv.classList.add('hidden');
                 vaultDisplayContainer.classList.add('hidden');
-                getProfileDataWithToken(session.accessToken, session.membershipId);
+                refreshAllData();
             }
         });
 
@@ -1561,6 +1570,20 @@
                 }
             } catch (error) {
                 playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du profil : ${error.message}</p>`;
+            }
+        }
+
+        async function refreshAllData() {
+            const session = getSessionFromCache();
+            if (!session) {
+                if (refreshIntervalId) clearInterval(refreshIntervalId);
+                return;
+            }
+
+            if (Date.now() > session.accessTokenExpiresAt) {
+                await refreshToken(session.refreshToken);
+            } else {
+                await getProfileDataWithToken(session.accessToken, session.membershipId);
             }
         }
 
