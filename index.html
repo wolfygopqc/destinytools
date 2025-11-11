@@ -1774,9 +1774,6 @@
                 const tableHead = document.createElement('thead');
                 const headerRow = document.createElement('tr');
                 headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>';
-                if (canPerformAdminActions) {
-                    headerRow.innerHTML += '<th>Actions</th>';
-                }
                 tableHead.appendChild(headerRow);
                 memberTable.appendChild(tableHead);
                 const tableBody = document.createElement('tbody');
@@ -2089,14 +2086,6 @@
             } catch (error) {
                 leaderboardContainer.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du leaderboard: ${error.message}</p>`;
             }
-        }
-
-        function handleClanAction(action, groupId, targetMembershipId = null, targetMembershipType = null, currentRank = null) {
-            let message = `Action: ${action} sur le clan ${groupId}`;
-            if (targetMembershipId) {
-                message += `, membre: ${targetMembershipId}`;
-            }
-            alert(`Cette fonctionnalité est en cours de développement. ${message}`);
         }
 
         async function createCharacterCard(characterId, data, itemInstances, isOwnProfile = false) { 
