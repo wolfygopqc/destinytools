@@ -2697,7 +2697,6 @@
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const label = document.createElement('label');
-                    const label = document.createElement('label');                    
                     label.innerHTML = `
                         <input type="checkbox" data-section-id="${sectionId}" ${userSettings.sectionVisibility[sectionId] ? 'checked' : ''}>
                         ${element.querySelector('h2')?.textContent || sectionId}
