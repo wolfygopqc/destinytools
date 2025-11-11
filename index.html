@@ -1526,6 +1526,8 @@
         });
 
         async function showPlayerProfile(membershipType, membershipId, displayName, displayCode) {
+            playerProfileModal.classList.add('visible');
+
             const playerProfileContent = document.getElementById('playerProfileContent');
             const playerProfileName = document.getElementById('playerProfileName');
             playerProfileName.textContent = `Profil de ${displayName}#${displayCode}`;
