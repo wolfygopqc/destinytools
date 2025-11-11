@@ -649,7 +649,7 @@
         .clan-header {
             display: flex;
             flex-direction: column;
-            align-items: center; /* Centrer les éléments */
+            align-items: center;
             gap: 20px;
             margin-bottom: 20px;
             padding-bottom: 20px;
@@ -657,8 +657,8 @@
         }
         .clan-banner {
             width: 100%;
-            max-width: 480px; /* Limiter la largeur maximale de la bannière */
-            height: auto; /* Maintenir le ratio d'aspect */
+            max-width: 480px;
+            height: auto;
             object-fit: contain;
         }
         .clan-details h3 {
@@ -713,7 +713,6 @@
         .member-list th { background-color: rgba(0,0,0,0.3); }
         .member-list tr:not(:first-child):hover {
             background-color: rgba(255,255,255,0.1);
-            cursor: pointer;
         }
         .member-list tr:nth-child(even) { background-color: rgba(0,0,0,0.1); }
 
@@ -1545,10 +1544,10 @@
                 const memberListDiv = document.createElement('div');
                 memberListDiv.className = 'member-list';
                 memberListDiv.innerHTML = '<h4>Membres</h4>';
-                const memberTable = document.createElement('table'); // Création du tableau
+                const memberTable = document.createElement('table');
                 const tableHead = document.createElement('thead');
                 const headerRow = document.createElement('tr');
-                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>'; // Ajout de la colonne Profil
+                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>';
                 if (canPerformAdminActions) {
                     headerRow.innerHTML += '<th>Actions</th>';
                 }
@@ -1562,48 +1561,45 @@
                     if (membersData.ErrorCode === 1) {
                         const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
                         membersData.Response.results.sort((a, b) => b.memberType - a.memberType).forEach(member => {
-                            let actionsHtml = '';
-                            if (canPerformAdminActions) {
-                                actionsHtml = `<td>`;
-                                const canManage = member.destinyUserInfo.membershipId !== membershipId && member.memberType < currentUserClanMemberType;
-                                if (canManage) {
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em; margin-right: 5px;" title="Exclure" onclick="event.stopPropagation(); handleClanAction('kick', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}')">🗑️</button>`; // event.stopPropagation() pour éviter d'ouvrir le profil
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" title="Changer le rang" onclick="event.stopPropagation(); handleClanAction('changeRank', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}', '${member.memberType}')">⬆️⬇️</button>`; // event.stopPropagation() pour éviter d'ouvrir le profil
-                                }
-                                actionsHtml += `</td>`;
-                            }
-
                             const row = document.createElement('tr');
-                            // Le clic sur la ligne entière est supprimé pour laisser place au bouton spécifique
-                            row.innerHTML = `
-                                <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td> 
-                                <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
-                                <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
-                                <td><button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" onclick="event.stopPropagation(); showPlayerProfile('${member.destinyUserInfo.membershipType}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.bungieGlobalDisplayName}', '${member.destinyUserInfo.bungieGlobalDisplayNameCode}')">Voir Profil</button></td>
-                                ${actionsHtml}
-                            `;
+                            
+                            const nameCell = document.createElement('td');
+                            nameCell.textContent = `${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}`;
+                            row.appendChild(nameCell);
+
+                            const rankCell = document.createElement('td');
+                            rankCell.textContent = memberTypes[member.memberType] || 'Inconnu';
+                            row.appendChild(rankCell);
+
+                            const dateCell = document.createElement('td');
+                            dateCell.textContent = new Date(member.joinDate).toLocaleDateString('fr-FR');
+                            row.appendChild(dateCell);
+
+                            const profileCell = document.createElement('td');
+                            const profileButton = document.createElement('button');
+                            profileButton.className = 'action-button';
+                            profileButton.style.cssText = 'padding: 5px 10px; font-size: 0.8em;';
+                            profileButton.textContent = 'Voir Profil';
+                            profileButton.onclick = () => showPlayerProfile(member.destinyUserInfo.membershipType, member.destinyUserInfo.membershipId, member.destinyUserInfo.bungieGlobalDisplayName, member.destinyUserInfo.bungieGlobalDisplayNameCode);
+                            profileCell.appendChild(profileButton);
+                            row.appendChild(profileCell);
+
                             tableBody.appendChild(row);
                         });
                     } else {
                         const errorRow = document.createElement('tr');
-                        errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td>`;
+                        errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 5 : 4}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td>`;
                         tableBody.appendChild(errorRow);
                     }
                 } catch (memberError) {
                     console.error("Erreur lors du chargement des membres:", memberError);
                     const errorRow = document.createElement('tr');
-                    errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td>`;
+                    errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 5 : 4}" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td>`;
                     tableBody.appendChild(errorRow);
                 }
                 memberTable.appendChild(tableBody);
                 memberListDiv.appendChild(memberTable);
 
-                if (canPerformAdminActions) {
-                    const recruitDiv = document.createElement('div');
-                    recruitDiv.style = "margin-top: 15px; text-align: center;";
-                    recruitDiv.innerHTML = `<button class="action-button" onclick="handleClanAction('recruit', '${groupId}')">➕ Recruter</button>`;
-                    memberListDiv.appendChild(recruitDiv);
-                }
                 clanInfoDiv.appendChild(memberListDiv);
 
                 const leaderboardContainer = document.createElement('div');
@@ -2122,171 +2118,7 @@
                 ...Object.values(fullProfileData.characterInventories.data).flatMap(inv => inv.items)
             ];
 
-            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullOutProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
-
-            const categories = {
-                "Armes cinétiques": 1498876634, "Armes énergétiques": 2465295065, "Armes puissantes": 953998645,
-                "Casques": 3448274439, "Gantelets": 3551918588, "Armures de torse": 14239492, "Armures de jambes": 20886954, "Objets de classe": 4350422948
-            };
-
-            loadoutBuilderItemsContainer.innerHTML = '';
-
-            Object.entries(categories).forEach(async ([categoryName, bucketHash]) => {
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'loadout-builder-category';
-                categoryDiv.innerHTML = `<h4>${categoryName}</h4>`;
-
-                const itemsGrid = document.createElement('div');
-                itemsGrid.className = 'inventory-grid';
-
-                const itemsInCategory = allItems.filter(item => item.bucketHash === bucketHash);
-
-                for (const item of itemsInCategory) {
-                    const itemElement = await createItemElement(item, itemInstances, fullProfileData, 'builder');
-                    itemElement.dataset.itemInstanceId = item.itemInstanceId;
-                    itemElement.dataset.itemHash = item.itemHash;
-                    itemElement.dataset.bucketHash = item.bucketHash;
-                    itemElement.classList.add('loadout-builder-item');
-                    itemElement.addEventListener('click', () => {
-                        selectItemForLoadout(item, bucketHash);
-                        itemsGrid.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
-                        itemElement.classList.add('selected');
-                    });
-                    itemsGrid.appendChild(itemElement);
-                }
-                categoryDiv.appendChild(itemsGrid);
-                loadoutBuilderItemsContainer.appendChild(categoryDiv);
-            });
-
-            loadoutBuilderModal.classList.add('visible');
-        }
-
-        function selectItemForLoadout(item, bucketHash) {
-            currentLoadoutBuilder[bucketHash] = {
-                itemInstanceId: item.itemInstanceId,
-                itemHash: item.itemHash
-            };
-            updateSelectedLoadoutItems();
-        }
-
-        async function updateSelectedLoadoutItems() {
-            selectedLoadoutItemsDiv.innerHTML = '';
-            for (const bucketHash in currentLoadoutBuilder) {
-                const itemInfo = currentLoadoutBuilder[bucketHash];
-                const def = await getDefinition('DestinyInventoryItemDefinition', itemInfo.itemHash);
-                if (def) {
-                    const img = document.createElement('img');
-                    img.src = `https://www.bungie.net${def.displayProperties.icon}`;
-                    img.title = def.displayProperties.name;
-                    img.style.width = '64px';
-                    img.style.height = '64px';
-                    selectedLoadoutItemsDiv.appendChild(img);
-                }
-            }
-        }
-
-        async function importLoadoutFromCode(code, type = 'personal') {
-            try {
-                const itemHashes = JSON.parse(atob(code));
-                const allItems = [
-                    ...fullProfileData.profileInventory.data.items,
-                    ...Object.values(fullProfileData.characterInventories.data).flatMap(inv => inv.items)
-                ];
-
-                const newLoadout = {};
-                const missingItems = [];
-
-                for (const hash of itemHashes) {
-                    const ownedItem = allItems.find(item => item.itemHash == hash);
-                    if (ownedItem) {
-                        newLoadout[ownedItem.bucketHash] = { itemInstanceId: ownedItem.itemInstanceId, itemHash: ownedItem.itemHash };
-                    } else {
-                        const def = await getDefinition('DestinyInventoryItemDefinition', hash);
-                        missingItems.push(def ? def.displayProperties.name : `Objet inconnu (${hash})`);
-                    }
-                }
-
-                if (missingItems.length > 0) {
-                    alert("Les objets suivants n'ont pas été trouvés dans votre inventaire : \n- " + missingItems.join('\n- '));
-                }
-
-                currentLoadoutBuilder = newLoadout;
-                openLoadoutBuilder(type);
-                updateSelectedLoadoutItems();
-                const typeText = type === 'clan' ? 'de clan' : '';
-                document.getElementById('newLoadoutName').value = `Équipement ${typeText} importé`;
-
-            } catch (error) {
-                alert("Code d'équipement invalide ou corrompu.");
-                console.error("Erreur d'importation :", error);
-            }
-        }
-    </script>
-</body>
- 
-</html>
-                });
-
-                const deleteButton = loadoutDiv.querySelector('.delete-btn');
-                deleteButton.addEventListener('click', () => {
-                    if (confirm("Êtes-vous sûr de vouloir supprimer cet équipement de clan ?")) {
-                        loadouts.splice(index, 1);
-                        localStorage.setItem('destinyClanLoadouts', JSON.stringify(loadouts));
-                        displayClanLoadouts();
-                    }
-                });
-
-                clanLoadoutsList.appendChild(loadoutDiv);
-            }
-        }
-
-        async function equipLoadout(loadout) {
-            if (!loadout.characterId) {
-                alert("Impossible d'équiper : ce build n'est assigné à aucun personnage. Veuillez le recréer.");
-                return;
-            }
-
-            const session = getSessionFromCache();
-            alert(`Équipement de "${loadout.name}" en cours...`);
-            try {
-                const response = await fetch('https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItems/', {
-                    method: 'POST',
-                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        itemIds: loadout.itemInstanceIds,
-                        characterId: loadout.characterId,
-                        membershipType: currentUserInfo.membershipType
-                    })
-                });
-                const data = await response.json();
-                if (data.ErrorCode === 1) {
-                    alert('Équipement appliqué avec succès !');
-                    refreshBtn.click();
-                } else {
-                    throw new Error(data.Message);
-                }
-            } catch (error) {
-                alert(`Erreur lors de l'équipement : ${error.message}. Assurez-vous que tous les objets sont dans le coffre ou sur le personnage.`);
-            }
-        }
-
-        function openLoadoutBuilder(type = 'personal') {
-            if (!fullProfileData) {
-                alert("Les données du profil ne sont pas encore chargées.");
-                return;
-            }
-            currentLoadoutBuilder = {};
-            document.getElementById('newLoadoutName').value = '';
-            updateSelectedLoadoutItems();
-            saveNewLoadoutBtn.dataset.loadoutType = type;
-
-            const allItems = [
-                ...fullProfileData.profileInventory.data.items,
-                ...Object.values(fullProfileData.characterInventories.data).flatMap(inv => inv.items)
-            ];
-
             const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
-            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullOutProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
             const categories = {
                 "Armes cinétiques": 1498876634, "Armes énergétiques": 2465295065, "Armes puissantes": 953998645,
