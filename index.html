@@ -1296,7 +1296,6 @@
         }
 
         function showContent() {
-            loginContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
@@ -2685,18 +2684,9 @@
         }
 
         function openSettingsModal() {
-            settingsModal.classList.add('visible');
-            
-            try {
-                populateVisibilityOptions();
-            } catch (e) {
-                console.error("Error populating visibility options:", e);
-            }
-            try {
-                populateOrderList();
-            } catch (e) {
-                console.error("Error populating order list:", e);
-            }
+            if (!settingsModal.classList.contains('visible')) settingsModal.classList.add('visible');
+            populateVisibilityOptions();
+            populateOrderList();
         }
 
         function populateVisibilityOptions() {
@@ -2704,7 +2694,6 @@
             for (const sectionId in mainContentSectionElements) {
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
-                    const label = document.createElement('label');
                     const h2 = element.querySelector('h2');
                     const sectionName = h2 ? h2.textContent : sectionId;
                     label.innerHTML = `
