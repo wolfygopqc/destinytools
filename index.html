@@ -1726,6 +1726,7 @@
             pgcrContent.innerHTML = '<div class="loader"></div>';
 
             try {
+                await new Promise(resolve => setTimeout(resolve, 100));
                 const pgcrRes = await fetch(`https://www.bungie.net/Platform/Destiny2/Stats/PostGameCarnageReport/${activityId}/`, {
                     headers: { 'X-API-Key': BUNGIE_API_KEY }
                 });
@@ -1764,7 +1765,7 @@
                 pgcrContent.innerHTML = tableHtml;
 
             } catch (error) {
-                pgcrContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du rapport de partie : ${error.message}</p>`;
+                pgcrContent.innerHTML = `<p style="color: #ff7b7b;">Erreur réseau lors du chargement du rapport de partie. Veuillez vérifier votre connexion ou désactiver temporairement vos bloqueurs de publicités/scripts, puis réessayez.</p>`;
             }
         }
 
