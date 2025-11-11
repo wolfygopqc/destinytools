@@ -1518,7 +1518,7 @@
                 const memberTable = document.createElement('table');
                 const tableHead = document.createElement('thead');
                 const headerRow = document.createElement('tr');
-                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>';
+                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>'; // Colonne Profil
                 if (canPerformAdminActions) {
                     headerRow.innerHTML += '<th>Actions</th>';
                 }
@@ -1531,26 +1531,30 @@
                     const membersData = await membersRes.json();
                     if (membersData.ErrorCode === 1) {
                         const memberTypes = { 5: 'Fondateur', 3: 'Admin', 2: 'Membre', 1: 'Débutant' };
-                        membersData.Response.results.sort((a, b) => b.memberType - a.memberType).forEach(member => {
-                            let actionsHtml = '';
-                            if (canPerformAdminActions) {
-                                actionsHtml = `<td>`;
-                                const canManage = member.destinyUserInfo.membershipId !== membershipId && member.memberType < currentUserClanMemberType;
-                                if (canManage) {
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em; margin-right: 5px;" title="Exclure" onclick="event.stopPropagation(); handleClanAction('kick', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}')">🗑️</button>`;
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" title="Changer le rang" onclick="event.stopPropagation(); handleClanAction('changeRank', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}', '${member.memberType}')">⬆️⬇️</button>`;
-                                }
-                                actionsHtml += `</td>`;
-                            }
-
+                        membersData.Response.results.sort((a, b) => b.memberType - a.memberType).forEach(member => {                            
                             const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td> 
-                                <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
-                                <td>${new Date(member.joinDate).toLocaleDateString('fr-FR')}</td>
-                                <td><button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" onclick="event.stopPropagation(); showPlayerProfile('${member.destinyUserInfo.membershipType}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.bungieGlobalDisplayName}', '${member.destinyUserInfo.bungieGlobalDisplayNameCode}')">Voir Profil</button></td>
-                                ${actionsHtml}
-                            `;
+                            
+                            const nameCell = document.createElement('td');
+                            nameCell.textContent = `${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}`;
+                            row.appendChild(nameCell);
+
+                            const rankCell = document.createElement('td');
+                            rankCell.textContent = memberTypes[member.memberType] || 'Inconnu';
+                            row.appendChild(rankCell);
+
+                            const dateCell = document.createElement('td');
+                            dateCell.textContent = new Date(member.joinDate).toLocaleDateString('fr-FR');
+                            row.appendChild(dateCell);
+
+                            const profileCell = document.createElement('td');
+                            const profileButton = document.createElement('button');
+                            profileButton.className = 'action-button';
+                            profileButton.style.cssText = 'padding: 5px 10px; font-size: 0.8em;';
+                            profileButton.textContent = 'Voir Profil';
+                            profileButton.onclick = () => showPlayerProfile(member.destinyUserInfo.membershipType, member.destinyUserInfo.membershipId, member.destinyUserInfo.bungieGlobalDisplayName, member.destinyUserInfo.bungieGlobalDisplayNameCode);
+                            profileCell.appendChild(profileButton);
+                            row.appendChild(profileCell);
+
                             tableBody.appendChild(row);
                         });
                     } else {
@@ -1567,12 +1571,6 @@
                 memberTable.appendChild(tableBody);
                 memberListDiv.appendChild(memberTable);
 
-                if (canPerformAdminActions) {
-                    const recruitDiv = document.createElement('div');
-                    recruitDiv.style = "margin-top: 15px; text-align: center;";
-                    recruitDiv.innerHTML = `<button class="action-button" onclick="handleClanAction('recruit', '${groupId}')">➕ Recruter</button>`;
-                    memberListDiv.appendChild(recruitDiv);
-                }
                 clanInfoDiv.appendChild(memberListDiv);
 
             } catch (error) {
