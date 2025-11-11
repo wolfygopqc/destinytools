@@ -849,6 +849,11 @@
             opacity: 0.5;
             background-color: rgba(82, 148, 226, 0.3);
         }
+        #orderActions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 
@@ -2673,6 +2678,10 @@
                 <div class="settings-section">
                     <h3>Ordre des sections</h3>
                     <ul id="sectionOrderList"></ul>
+                    <div id="orderActions">
+                        <button id="saveOrderBtn" class="action-button">Sauvegarder l'ordre</button>
+                        <button id="cancelOrderBtn" class="action-button" style="background-color: #7f8c8d;">Annuler</button>
+                    </div>
                 </div>
 
                 <button id="resetSettingsBtn" class="action-button" style="background-color: #c0392b;">Réinitialiser les paramètres</button>
@@ -2702,21 +2711,12 @@
                 }
             }
 
-            const sectionOrderListUl = document.getElementById('sectionOrderList');
-            sectionOrderListUl.innerHTML = '';
-            userSettings.sectionOrder.forEach((sectionId) => {
-                if (sectionId === 'settingsContainer' || sectionId === 'contentContainer') return;
-                const element = mainContentSectionElements[sectionId];
-                if (element) {
-                    const li = document.createElement('li');
-                    li.draggable = true;
-                    li.dataset.sectionId = sectionId;
-                    const h2 = element.querySelector('h2');
-                    li.textContent = h2 ? h2.textContent : sectionId;
-                    sectionOrderListUl.appendChild(li);
-                }
-            });
+            buildOrderList();
 
+            document.getElementById('saveOrderBtn').addEventListener('click', saveNewOrder);
+            document.getElementById('cancelOrderBtn').addEventListener('click', buildOrderList);
+            
+            const sectionOrderListUl = document.getElementById('sectionOrderList');
             let draggedItem = null;
 
             sectionOrderListUl.addEventListener('dragstart', (e) => {
@@ -2728,7 +2728,9 @@
 
             sectionOrderListUl.addEventListener('dragend', (e) => {
                 setTimeout(() => {
-                    draggedItem.classList.remove('dragging');
+                    if (draggedItem) {
+                        draggedItem.classList.remove('dragging');
+                    }
                     draggedItem = null;
                 }, 0);
             });
@@ -2737,19 +2739,17 @@
                 e.preventDefault();
                 const afterElement = getDragAfterElement(sectionOrderListUl, e.clientY);
                 const currentDragged = document.querySelector('.dragging');
-                if (afterElement == null) {
-                    sectionOrderListUl.appendChild(currentDragged);
-                } else {
-                    sectionOrderListUl.insertBefore(currentDragged, afterElement);
+                if (currentDragged) {
+                    if (afterElement == null) {
+                        sectionOrderListUl.appendChild(currentDragged);
+                    } else {
+                        sectionOrderListUl.insertBefore(currentDragged, afterElement);
+                    }
                 }
             });
 
             sectionOrderListUl.addEventListener('drop', (e) => {
                 e.preventDefault();
-                const newOrder = [...sectionOrderListUl.querySelectorAll('li')].map(li => li.dataset.sectionId);
-                userSettings.sectionOrder = ['contentContainer', ...newOrder];
-                saveSettings();
-                applyOrderSettings();
             });
 
             function getDragAfterElement(container, y) {
@@ -2765,6 +2765,41 @@
                 }, { offset: Number.NEGATIVE_INFINITY }).element;
             }
 
+            function buildOrderList() {
+                playButtonClickSound();
+                const sectionOrderListUl = document.getElementById('sectionOrderList');
+                sectionOrderListUl.innerHTML = '';
+                userSettings.sectionOrder.forEach((sectionId) => {
+                    if (sectionId === 'settingsContainer' || sectionId === 'contentContainer') return;
+                    const element = mainContentSectionElements[sectionId];
+                    if (element) {
+                        const li = document.createElement('li');
+                        li.draggable = true;
+                        li.dataset.sectionId = sectionId;
+                        const h2 = element.querySelector('h2');
+                        li.textContent = h2 ? h2.textContent : sectionId;
+                        sectionOrderListUl.appendChild(li);
+                    }
+                });
+            }
+
+            function saveNewOrder() {
+                playButtonClickSound();
+                const sectionOrderListUl = document.getElementById('sectionOrderList');
+                const newOrder = [...sectionOrderListUl.querySelectorAll('li')].map(li => li.dataset.sectionId);
+                
+                const finalOrder = ['contentContainer', ...newOrder.filter(id => id !== 'contentContainer')];
+
+                Object.keys(mainContentSectionElements).forEach(id => {
+                    if (!finalOrder.includes(id) && id !== 'settingsContainer') {
+                        finalOrder.push(id);
+                    }
+                });
+
+                userSettings.sectionOrder = finalOrder;
+                saveSettings();
+                applyOrderSettings();
+            }
             document.getElementById('toggleButtonSounds').checked = userSettings.buttonSounds;
             document.getElementById('toggleButtonSounds').addEventListener('change', (e) => {
                 userSettings.buttonSounds = e.target.checked;
