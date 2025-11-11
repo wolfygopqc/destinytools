@@ -838,7 +838,16 @@
             background-color: rgba(0,0,0,0.2);
             padding: 10px;
             margin-bottom: 5px;
-            display: flex; justify-content: space-between; align-items: center;
+            border-left: 3px solid var(--border-color);
+            cursor: grab;
+            transition: background-color 0.2s, border-left-color 0.2s;
+        }
+        #sectionOrderList li:hover {
+            border-left-color: var(--accent-color);
+        }
+        #sectionOrderList li.dragging {
+            opacity: 0.5;
+            background-color: rgba(82, 148, 226, 0.3);
         }
     </style>
 </head>
@@ -2580,7 +2589,8 @@
         function loadSettings() {
             const savedSettings = localStorage.getItem('destinyUserSettings');
             if (savedSettings) {
-                userSettings = JSON.parse(savedSettings);
+                const parsedSettings = JSON.parse(savedSettings);
+                userSettings = { ...userSettings, ...parsedSettings };
             } else {
                 const defaultSectionVisibility = {};
                 userSettings.sectionOrder.forEach(id => defaultSectionVisibility[id] = true);
@@ -2693,16 +2703,67 @@
             }
 
             const sectionOrderListUl = document.getElementById('sectionOrderList');
+            sectionOrderListUl.innerHTML = '';
             userSettings.sectionOrder.forEach((sectionId) => {
                 if (sectionId === 'settingsContainer' || sectionId === 'contentContainer') return;
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const li = document.createElement('li');
+                    li.draggable = true;
+                    li.dataset.sectionId = sectionId;
                     const h2 = element.querySelector('h2');
                     li.textContent = h2 ? h2.textContent : sectionId;
                     sectionOrderListUl.appendChild(li);
                 }
             });
+
+            let draggedItem = null;
+
+            sectionOrderListUl.addEventListener('dragstart', (e) => {
+                draggedItem = e.target;
+                setTimeout(() => {
+                    e.target.classList.add('dragging');
+                }, 0);
+            });
+
+            sectionOrderListUl.addEventListener('dragend', (e) => {
+                setTimeout(() => {
+                    draggedItem.classList.remove('dragging');
+                    draggedItem = null;
+                }, 0);
+            });
+
+            sectionOrderListUl.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(sectionOrderListUl, e.clientY);
+                const currentDragged = document.querySelector('.dragging');
+                if (afterElement == null) {
+                    sectionOrderListUl.appendChild(currentDragged);
+                } else {
+                    sectionOrderListUl.insertBefore(currentDragged, afterElement);
+                }
+            });
+
+            sectionOrderListUl.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const newOrder = [...sectionOrderListUl.querySelectorAll('li')].map(li => li.dataset.sectionId);
+                userSettings.sectionOrder = ['contentContainer', ...newOrder];
+                saveSettings();
+                applyOrderSettings();
+            });
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
 
             document.getElementById('toggleButtonSounds').checked = userSettings.buttonSounds;
             document.getElementById('toggleButtonSounds').addEventListener('change', (e) => {
