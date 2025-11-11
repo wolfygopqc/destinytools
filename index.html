@@ -1606,7 +1606,8 @@
                 leaderboardContainer.id = 'clanLeaderboard';
                 leaderboardContainer.className = 'leaderboard-container';
                 clanInfoDiv.appendChild(leaderboardContainer);
-                await displayClanLeaderboard(groupId);
+                // On affiche le leaderboard PvP par défaut
+                await displayClanLeaderboard(groupId, 'allpvp'); 
 
             } catch (error) {
                 console.error("Erreur lors du chargement initial des informations du clan:", error);
@@ -1615,10 +1616,19 @@
             }
         }
 
-        async function displayClanLeaderboard(groupId) {
+        async function displayClanLeaderboard(groupId, activityMode = 'allpvp') {
             const leaderboardContainer = document.getElementById('clanLeaderboard');
-            leaderboardContainer.innerHTML = '<h4>Leaderboard (PvP Compétitif)</h4><div class="loader"></div>';
+            leaderboardContainer.innerHTML = '<h4>Leaderboard</h4><div class="loader"></div>';
             const session = getSessionFromCache();
+
+            const activityModes = {
+                'allpvp': { name: 'Tout PvP', modeId: 5, path: 'allPvP', isPvp: true },
+                'raid': { name: 'Raids', modeId: 4, path: 'raid', isPvp: false },
+                'strike': { name: 'Assauts', modeId: 3, path: 'allStrikes', isPvp: false },
+                'gambit': { name: 'Gambit', modeId: 63, path: 'gambit', isPvp: false }
+            };
+
+            const currentActivity = activityModes[activityMode];
 
             try {
                 const membersRes = await fetch(`https://www.bungie.net/Platform/GroupV2/${groupId}/Members/`, { headers: { 'X-API-Key': BUNGIE_API_KEY } });
@@ -1626,62 +1636,108 @@
                 if (membersData.ErrorCode !== 1) throw new Error(membersData.Message);
 
                 const memberStatsPromises = membersData.Response.results.map(async (member) => {
-                    const { membershipType, membershipId } = member.destinyUserInfo;
+                    const { membershipType, membershipId, bungieGlobalDisplayName, bungieGlobalDisplayNameCode } = member.destinyUserInfo;
                     try {
-                        const statsRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/0/Stats/?modes=37`, {
+                        const statsRes = await fetch(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Account/${membershipId}/Character/0/Stats/?modes=${currentActivity.modeId}`, {
                             headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}` }
                         });
                         const statsData = await statsRes.json();
-                        const pvpStats = statsData.Response?.competitive?.allTime;
+                        if (statsData.ErrorCode !== 1) return null;
+
+                        const activityStats = statsData.Response[currentActivity.path]?.allTime;
+                        if (!activityStats) return null;
+
                         return {
-                            name: `${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}`,
-                            kills: pvpStats?.kills.basic.value || 0,
-                            deaths: pvpStats?.deaths.basic.value || 0,
-                            kd: pvpStats?.killsDeathsRatio.basic.value || 0,
-                            timePlayed: pvpStats?.secondsPlayed.basic.displayValue || '0s'
+                            name: `${bungieGlobalDisplayName}#${bungieGlobalDisplayNameCode}`,
+                            kills: activityStats.kills?.basic.value || 0,
+                            deaths: activityStats.deaths?.basic.value || 0,
+                            assists: activityStats.assists?.basic.value || 0,
+                            kd: activityStats.killsDeathsRatio?.basic.value || 0,
+                            kda: activityStats.killsDeathsAssists?.basic.value || 0,
+                            efficiency: activityStats.efficiency?.basic.value || 0,
+                            completions: activityStats.activitiesCleared?.basic.value || 0,
+                            timePlayed: activityStats.secondsPlayed?.basic.displayValue || '0h',
+                            timePlayedSeconds: activityStats.secondsPlayed?.basic.value || 0
                         };
                     } catch (e) {
+                        console.error(`Impossible de récupérer les stats pour ${bungieGlobalDisplayName}`, e);
                         return null;
                     }
                 });
 
                 let allStats = (await Promise.all(memberStatsPromises)).filter(s => s !== null);
 
-                const renderTable = (sortBy) => {
-                    allStats.sort((a, b) => b[sortBy] - a[sortBy]);
+                const renderTable = (sortBy, sortOrder = 'desc') => {
+                    allStats.sort((a, b) => {
+                        if (sortOrder === 'desc') return b[sortBy] - a[sortBy];
+                        return a[sortBy] - b[sortBy];
+                    });
 
-                    let tableHtml = `
-                        <div class="leaderboard-controls">
-                            <button class="${sortBy === 'kd' ? 'active' : ''}" data-sort="kd">K/D</button>
-                            <button class="${sortBy === 'kills' ? 'active' : ''}" data-sort="kills">Kills</button>
-                            <button class="${sortBy === 'deaths' ? 'active' : ''}" data-sort="deaths">Morts</button>
-                        </div>
-                        <div class="member-list">
-                            <table>
-                                <thead><tr><th>#</th><th>Nom</th><th>K/D</th><th>Kills</th><th>Morts</th><th>Temps de jeu</th></tr></thead>
-                                <tbody>
-                    `;
-                    allStats.forEach((stat, index) => {
+                    let activitySelectorHtml = '<div class="leaderboard-controls">';
+                    for (const modeKey in activityModes) {
+                        activitySelectorHtml += `<button class="${modeKey === activityMode ? 'active' : ''}" onclick="displayClanLeaderboard('${groupId}', '${modeKey}')">${activityModes[modeKey].name}</button>`;
+                    }
+                    activitySelectorHtml += '</div>';
+
+                    let tableHtml = '<div class="member-list"><table><thead><tr><th>#</th><th>Nom</th>';
+                    if (currentActivity.isPvp) {
                         tableHtml += `
-                            <tr>
-                                <td>${index + 1}</td>
-                                <td>${stat.name}</td>
+                            <th style="cursor:pointer" data-sort="efficiency">Efficacité</th>
+                            <th style="cursor:pointer" data-sort="kd">K/D</th>
+                            <th style="cursor:pointer" data-sort="kills">Frags</th>
+                            <th style="cursor:pointer" data-sort="assists">Aides</th>
+                            <th style="cursor:pointer" data-sort="deaths">Morts</th>
+                        `;
+                    } else {
+                        tableHtml += `
+                            <th style="cursor:pointer" data-sort="completions">Succès</th>
+                            <th style="cursor:pointer" data-sort="kills">Frags</th>
+                            <th style="cursor:pointer" data-sort="deaths">Morts</th>
+                        `;
+                    }
+                    tableHtml += '<th style="cursor:pointer" data-sort="timePlayedSeconds">Temps de jeu</th></tr></thead><tbody>';
+
+                    allStats.forEach((stat, index) => {
+                        tableHtml += `<tr><td>${index + 1}</td><td>${stat.name}</td>`;
+                        if (currentActivity.isPvp) {
+                            tableHtml += `
+                                <td>${stat.efficiency.toFixed(2)}</td>
                                 <td>${stat.kd.toFixed(2)}</td>
                                 <td>${stat.kills.toLocaleString('fr-FR')}</td>
+                                <td>${stat.assists.toLocaleString('fr-FR')}</td>
                                 <td>${stat.deaths.toLocaleString('fr-FR')}</td>
-                                <td>${stat.timePlayed}</td>
-                            </tr>
-                        `;
+                            `;
+                        } else {
+                            tableHtml += `
+                                <td>${stat.completions.toLocaleString('fr-FR')}</td>
+                                <td>${stat.kills.toLocaleString('fr-FR')}</td>
+                                <td>${stat.deaths.toLocaleString('fr-FR')}</td>
+                            `;
+                        }
+                        tableHtml += `<td>${stat.timePlayed}</td></tr>`;
                     });
                     tableHtml += '</tbody></table></div>';
-                    leaderboardContainer.innerHTML = '<h4>Leaderboard (PvP Compétitif)</h4>' + tableHtml;
+                    leaderboardContainer.innerHTML = '<h4>Leaderboard</h4>' + activitySelectorHtml + tableHtml;
 
-                    leaderboardContainer.querySelectorAll('.leaderboard-controls button').forEach(button => {
-                        button.addEventListener('click', (e) => renderTable(e.target.dataset.sort));
+                    leaderboardContainer.querySelectorAll('th[data-sort]').forEach(th => {
+                        th.addEventListener('click', () => {
+                            const newSortBy = th.dataset.sort;
+                            const currentSortBy = th.parentElement.querySelector('.sorted')?.dataset.sort;
+                            const currentOrder = th.dataset.order || 'desc';
+                            let newOrder = 'desc';
+                            if (newSortBy === currentSortBy && currentOrder === 'desc') {
+                                newOrder = 'asc';
+                            }
+                            renderTable(newSortBy, newOrder);
+                            const newTh = leaderboardContainer.querySelector(`th[data-sort="${newSortBy}"]`);
+                            newTh.dataset.order = newOrder;
+                            leaderboardContainer.querySelectorAll('th.sorted').forEach(s => s.classList.remove('sorted'));
+                            newTh.classList.add('sorted');
+                        });
                     });
                 };
 
-                renderTable('kd');
+                renderTable(currentActivity.isPvp ? 'efficiency' : 'completions');
             } catch (error) {
                 leaderboardContainer.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du leaderboard: ${error.message}</p>`;
             }
@@ -1695,7 +1751,7 @@
             alert(`Cette fonctionnalité est en cours de développement. ${message}`);
         }
 
-        async function createCharacterCard(characterId, data, itemInstances, isOwnProfile = false) {
+        async function createCharacterCard(characterId, data, itemInstances, isOwnProfile = false) { 
             const char = data.characters.data[characterId];
             if (!char) return null;
 
@@ -2118,7 +2174,7 @@
                 ...Object.values(fullProfileData.characterInventories.data).flatMap(inv => inv.items)
             ];
 
-            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) }; 
 
             const categories = {
                 "Armes cinétiques": 1498876634, "Armes énergétiques": 2465295065, "Armes puissantes": 953998645,
