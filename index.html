@@ -892,7 +892,7 @@
             </div>
         </div>
 
-        <div id="settingsPageContainer" class="content-container hidden">
+        <div id="settingsContainer" class="content-container hidden">
             <h2>Paramètres</h2>
             <div id="settingsContent"></div>
         </div>
@@ -1032,7 +1032,7 @@
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
         const settingsBtn = document.getElementById('settingsBtn');
-        const settingsPageContainer = document.getElementById('settingsPageContainer');
+        const settingsContainer = document.getElementById('settingsContainer');
         const settingsContent = document.getElementById('settingsContent');
 
         const perkDefinitionsCache = {};
@@ -1043,9 +1043,9 @@
         let userSettings = {
             buttonSounds: true,
             sectionOrder: [
-                'profileData', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
+                'contentContainer', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
                 'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
-                'historyContainer'
+                'historyContainer', 'settingsContainer'
             ],
             sectionVisibility: {} 
         };
@@ -1271,7 +1271,6 @@
 
         function showContent() {
             loginContainer.classList.add('hidden');
-            settingsPageContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
@@ -2562,18 +2561,21 @@
             }
         }
 
+        function playButtonClickSound() {
+            const buttonClickSound = document.getElementById('buttonClickSound');
+            if (userSettings.buttonSounds && buttonClickSound) {
+                buttonClickSound.play().catch(e => console.warn("Could not play button sound:", e));
+            }
+        }
+
         function loadSettings() {
             const savedSettings = localStorage.getItem('destinyUserSettings');
             if (savedSettings) {
                 userSettings = JSON.parse(savedSettings);
             } else {
                 const defaultSectionVisibility = {};
-                const allSectionIds = [
-                    'profileData', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
-                    'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
-                    'historyContainer'
-                ];
-                allSectionIds.forEach(id => defaultSectionVisibility[id] = true);
+                userSettings.sectionOrder.forEach(id => defaultSectionVisibility[id] = true);
+                defaultSectionVisibility['settingsContainer'] = false;
                 userSettings.sectionVisibility = defaultSectionVisibility;
             }
             applySettings();
@@ -2594,7 +2596,7 @@
         }
 
         const mainContentSectionElements = {
-            profileData: document.getElementById('profileData'),
+            contentContainer: document.getElementById('contentContainer'),
             vaultDisplayContainer: document.getElementById('vaultDisplayContainer'),
             communityContainer: document.getElementById('communityContainer'),
             questsContainer: document.getElementById('questsContainer'),
@@ -2602,7 +2604,8 @@
             loadoutsContainer: document.getElementById('loadoutsContainer'),
             clanLoadoutsContainer: document.getElementById('clanLoadoutsContainer'),
             clanContainer: document.getElementById('clanContainer'),
-            historyContainer: document.getElementById('historyContainer')
+            historyContainer: document.getElementById('historyContainer'),
+            settingsContainer: document.getElementById('settingsContainer')
         };
 
         function applyVisibilitySettings() {
@@ -2628,11 +2631,7 @@
             });
         }
 
-        function showSettingsPage() {
-            loginContainer.classList.add('hidden');
-            contentContainer.classList.add('hidden');
-            settingsPageContainer.classList.remove('hidden');
-
+        function populateSettingsContent() {
             settingsContent.innerHTML = `
                 <div class="settings-section">
                     <h3>Sons</h3>
@@ -2653,12 +2652,12 @@
                     <ul id="sectionOrderList"></ul>
                 </div>
 
-                <button id="resetSettingsBtn" class="action-button" style="background-color: #c0392b;">Réinitialiser</button>
-                <button id="backToAppBtn" class="action-button">Retour</button>
+                <button id="resetSettingsBtn" class="action-button" style="background-color: #c0392b;">Réinitialiser les paramètres</button>
             `;
 
             const sectionVisibilityOptionsDiv = document.getElementById('sectionVisibilityOptions');
             for (const sectionId in mainContentSectionElements) {
+                if (sectionId === 'settingsContainer') continue;
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const label = document.createElement('label');
@@ -2673,6 +2672,7 @@
                         playButtonClickSound();
                         userSettings.sectionVisibility[sectionId] = e.target.checked;
                         saveSettings();
+                        applyVisibilitySettings();
                     });
                     sectionVisibilityOptionsDiv.appendChild(label);
                     sectionVisibilityOptionsDiv.appendChild(document.createElement('br'));
@@ -2680,7 +2680,8 @@
             }
 
             const sectionOrderListUl = document.getElementById('sectionOrderList');
-            userSettings.sectionOrder.forEach((sectionId, index) => {
+            userSettings.sectionOrder.forEach((sectionId) => {
+                if (sectionId === 'settingsContainer') return;
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const li = document.createElement('li');
@@ -2704,28 +2705,19 @@
                     window.location.reload(); 
                 }
             });
-
-            document.getElementById('backToAppBtn').addEventListener('click', () => {
-                playButtonClickSound();
-                const session = getSessionFromCache();
-                if (session) {
-                    showContent();
-                } else {
-                    settingsPageContainer.classList.add('hidden');
-                    loginContainer.classList.remove('hidden');
-                }
-            });
         }
 
         settingsBtn.addEventListener('click', () => {
             playButtonClickSound();
-            showSettingsPage();
+            const settingsVisible = !settingsContainer.classList.contains('hidden');
+            userSettings.sectionVisibility['settingsContainer'] = !settingsVisible;
+            saveSettings();
+            applyVisibilitySettings();
+            if (!settingsVisible) {
+                populateSettingsContent();
+            }
         });
     </script>
 </body>
   
 </html>
-```<!--
-[PROMPT_SUGGESTION]Implémente la fonctionnalité de glisser-déposer pour réorganiser l'ordre des sections dans les paramètres.[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]Ajoute une option dans les paramètres pour changer le thème de couleur du portail.[/PROMPT_SUGGESTION]
--->
