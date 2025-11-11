@@ -1296,6 +1296,7 @@
         }
 
         function showContent() {
+            loginContainer.classList.add('hidden');
             contentContainer.classList.remove('hidden');
             loadingDiv.classList.remove('hidden');
             profileDataDiv.classList.add('hidden');
@@ -2684,9 +2685,18 @@
         }
 
         function openSettingsModal() {
-            if (!settingsModal.classList.contains('visible')) settingsModal.classList.add('visible');
-            populateVisibilityOptions();
-            populateOrderList();
+            settingsModal.classList.add('visible');
+            
+            try {
+                populateVisibilityOptions();
+            } catch (e) {
+                console.error("Error populating visibility options:", e);
+            }
+            try {
+                populateOrderList();
+            } catch (e) {
+                console.error("Error populating order list:", e);
+            }
         }
 
         function populateVisibilityOptions() {
