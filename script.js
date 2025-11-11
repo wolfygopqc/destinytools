@@ -21,7 +21,7 @@
             sectionVisibility: {},
             theme: 'default'
         };
-
+ 
         async function loadPartials() {
             const partials = [
                 'login', 'content', 'vault', 'community', 'quests', 'vendors', 

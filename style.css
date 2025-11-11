@@ -16,7 +16,7 @@
             --text-color: #1c1c1c;
             --accent-color: #007acc;
             --border-color: rgba(0, 0, 0, 0.2);
-        }
+        } 
 
         body[data-theme="vex"] {
             --bg-color: #2a261f;
