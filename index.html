@@ -1630,6 +1630,7 @@
 
             const activityModes = {
                 'allpvp': { name: 'Tout PvP', modeId: 5, path: 'allPvP', isPvp: true },
+                'allpve': { name: 'Tout PvE', modeId: 7, path: 'allPvE', isPvp: false },
                 'raid': { name: 'Raids', modeId: 4, path: 'raid', isPvp: false },
                 'strike': { name: 'Assauts', modeId: 3, path: 'allStrikes', isPvp: false },
                 'gambit': { name: 'Gambit', modeId: 63, path: 'gambit', isPvp: false }
@@ -1698,6 +1699,7 @@
                     if (currentActivity.isPvp) {
                         tableHtml += `
                             <th style="cursor:pointer" data-sort="efficiency">Efficacité</th>
+                            <th style="cursor:pointer" data-sort="kda">KDA</th>
                             <th style="cursor:pointer" data-sort="kd">K/D</th>
                             <th style="cursor:pointer" data-sort="kills">Frags</th>
                             <th style="cursor:pointer" data-sort="assists">Aides</th>
@@ -1717,6 +1719,7 @@
                         if (currentActivity.isPvp) {
                             tableHtml += `
                                 <td>${stat.efficiency.toFixed(2)}</td>
+                                <td>${stat.kda.toFixed(2)}</td>
                                 <td>${stat.kd.toFixed(2)}</td>
                                 <td>${stat.kills.toLocaleString('fr-FR')}</td>
                                 <td>${stat.assists.toLocaleString('fr-FR')}</td>
