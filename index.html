@@ -118,6 +118,62 @@
             max-width: 1200px;
             margin-bottom: 20px;
         }
+
+        #side-nav {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 70px;
+            background-color: var(--primary-color);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            z-index: 1001; /* Au-dessus des modales */
+            transition: width 0.3s ease;
+        }
+
+        #side-nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 15px 0;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #side-nav a:hover, #side-nav a.active {
+            background-color: rgba(82, 148, 226, 0.2);
+            color: var(--accent-color);
+        }
+
+        #side-nav a.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background-color: var(--accent-color);
+        }
+
+        #side-nav a .nav-text {
+            font-size: 0.8em;
+        }
+
+        body {
+            padding-left: 70px; /* Espace pour la barre de navigation */
+        }
+
+        /* Ajustement pour le main content */
+        main {
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 20px;
+        }
         #logoutBtn {
             background: none;
             border: 1px solid var(--border-color);
@@ -1079,6 +1135,20 @@
 
     <audio id="buttonClickSound" src="https://www.soundjay.com/button/button-1.mp3" preload="auto"></audio>
 
+    <nav id="side-nav" class="hidden">
+        <a href="#contentContainer" title="Personnages"><span class="nav-text">Persos</span></a>
+        <a href="#vaultDisplayContainer" title="Coffre"><span class="nav-text">Coffre</span></a>
+        <a href="#communityContainer" title="Communauté"><span class="nav-text">Recherche</span></a>
+        <a href="#questsContainer" title="Quêtes"><span class="nav-text">Quêtes</span></a>
+        <a href="#vendorsContainer" title="Marchands"><span class="nav-text">Marchands</span></a>
+        <a href="#loadoutsContainer" title="Équipements"><span class="nav-text">Loadouts</span></a>
+        <a href="#clanLoadoutsContainer" title="Équipements de Clan"><span class="nav-text">Clan Loadouts</span></a>
+        <a href="#clanContainer" title="Clan"><span class="nav-text">Clan</span></a>
+        <a href="#historyContainer" title="Historique"><span class="nav-text">Historique</span></a>
+        <a href="#settingsContainer" title="Paramètres"><span class="nav-text">Params</span></a>
+    </nav>
+
+
     <script>
         const BUNGIE_CLIENT_ID = "51007";
         const BUNGIE_API_KEY = "d1fc55de14f441619f05e51c761dcca6";
@@ -1144,6 +1214,7 @@
                 'historyContainer'
             ],
             sectionVisibility: {} 
+            // theme: 'default' a été déplacé dans loadSettings pour une meilleure initialisation
         };
 
         loginBtn.addEventListener('click', () => {
@@ -1196,6 +1267,7 @@
             displaySearchHistory();
             displayLoadouts();
             displayClanLoadouts();
+            initializeSideNav();
             loadSettings();
             applyThemeSetting();
             populateSettingsContent();
@@ -1413,6 +1485,7 @@
             logoutBtn.classList.add('hidden');
             refreshBtn.classList.add('hidden');
             document.querySelectorAll('.content-container').forEach(el => {
+                document.getElementById('side-nav').classList.add('hidden');
                 if(el.id !== 'loginContainer') el.classList.add('hidden');
             });
         }
@@ -1424,6 +1497,7 @@
             profileDataDiv.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
             refreshBtn.classList.remove('hidden');
+            document.getElementById('side-nav').classList.remove('hidden');
 
             applyVisibilitySettings();
             applyOrderSettings();
@@ -2741,6 +2815,20 @@
             applyThemeSetting();
             applyOrderSettings();
             applyChristmasSetting(); 
+            applyChristmasSetting();
+        }
+
+        function applyChristmasSetting() {
+            const snowflakesContainer = document.getElementById('snowflakes');
+            const isChristmasActive = userSettings.christmasEvent ?? true; // Utilise true par défaut
+
+            if (isChristmasActive && snowflakesContainer) {
+                if (!snowflakesContainer.hasChildNodes()) {
+                    createSnowflakes();
+                }
+            } else if (snowflakesContainer) {
+                snowflakesContainer.innerHTML = '';
+            }
         }
 
         function applySoundSetting() {
@@ -2810,10 +2898,19 @@
                 </div>
 
                 <div class="settings-section">
+                    <h3>Événements</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleChristmasEvent">
+                        <span class="slider round"></span>
+                    </label>
+                    <label for="toggleChristmasEvent">Activer le thème de Noël</label>
+                </div>
+
+                <div class="settings-section">
                     <h3>Thème</h3>
                     <div id="themeSelector">
                         <button class="action-button" data-theme="default">Défaut</button>
-                        <button class="action-button" data-theme="light">iheir c1</button>
+                        <button class="action-button" data-theme="light">1</button>
                         <button class="action-button" data-theme="vex">2</button>
                         <button class="action-button" data-theme="siva">3</button>
                     </div>
@@ -2867,6 +2964,14 @@
                     saveSettings();
                     applyThemeSetting();
                 });
+            });
+
+            const christmasToggle = document.getElementById('toggleChristmasEvent');
+            christmasToggle.checked = userSettings.christmasEvent ?? true;
+            christmasToggle.addEventListener('change', (e) => {
+                userSettings.christmasEvent = e.target.checked;
+                saveSettings();
+                applyChristmasSetting();
             });
 
             buildOrderList();
@@ -2970,6 +3075,52 @@
                 if (confirm("Êtes-vous sûr de vouloir réinitialiser tous les paramètres ?")) {
                     localStorage.removeItem('destinyUserSettings');
                     window.location.reload(); 
+                }
+            });
+        }
+
+        function initializeSideNav() {
+            const sideNav = document.getElementById('side-nav');
+            if (!sideNav) return;
+
+            sideNav.addEventListener('click', (e) => {
+                const link = e.target.closest('a');
+                if (link && link.hash) {
+                    e.preventDefault();
+                    const targetId = link.hash.substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
+
+            const sections = document.querySelectorAll('.content-container');
+            const navLinks = sideNav.querySelectorAll('a');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        navLinks.forEach(link => {
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('active');
+                            } else {
+                                link.classList.remove('active');
+                            }
+                        });
+                    }
+                });
+            }, {
+                rootMargin: '-50% 0px -50% 0px', // Active le lien quand la section est au milieu de l'écran
+                threshold: 0
+            });
+
+            sections.forEach(section => {
+                // On observe uniquement les sections qui ont un lien dans la nav
+                const correspondingLink = sideNav.querySelector(`a[href="#${section.id}"]`);
+                if (correspondingLink) {
+                    observer.observe(section);
                 }
             });
         }
