@@ -649,22 +649,17 @@
         .clan-header {
             display: flex;
             flex-direction: column;
-            align-items: center; /* Centrer les éléments */
-            flex-direction: column;
-            align-items: center; /* Centrer les éléments */
+            align-items: center;
             gap: 20px;
             margin-bottom: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid var(--border-color);
-        }%
-        .clamax-wbdnher48{ /* Limiter la largeur maximale de la bannière */
-            ht0gh0pxaut; /* Maienir le rto d'aspect */
-            objicthf2tpxcontain
+        }
+        .clan-banner {
             width: 100%;
-            max-width: 480px; /* Limiter la largeur maximale de la bannière */
-            height: auto; /* Maintenir le ratio d'aspect */
+            max-width: 480px;
+            height: auto;
             object-fit: contain;
-            flex-shrink: 0;
         }
         .clan-details h3 {
             margin: 0;
@@ -718,7 +713,6 @@
         .member-list th { background-color: rgba(0,0,0,0.3); }
         .member-list tr:not(:first-child):hover {
             background-color: rgba(255,255,255,0.1);
-            cursor: pointer;
         }
         .member-list tr:nth-child(even) { background-color: rgba(0,0,0,0.1); }
 
@@ -1486,7 +1480,6 @@
 
                 let headerHtml = `
                     <div class="clan-header">
-                        <img class="clan-banner" src="https://www.bungie.net${clan.bannerPath}" style="width: 200px; height: 100px;">
                         <img class="clan-banner" src="https://www.bungie.net${clan.bannerPath}">
                         <div class="clan-details">
                             <h3>${clan.name} [${clan.clanInfo.clanCallsign}]</h3>
@@ -1522,10 +1515,10 @@
                 const memberListDiv = document.createElement('div');
                 memberListDiv.className = 'member-list';
                 memberListDiv.innerHTML = '<h4>Membres</h4>';
-                const memberTable = document.createElement('table'); // Création du tableau
+                const memberTable = document.createElement('table');
                 const tableHead = document.createElement('thead');
                 const headerRow = document.createElement('tr');
-                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>'; // Ajout de la colonne Profil
+                headerRow.innerHTML = '<th>Nom</th><th>Rang</th><th>Date d\'arrivée</th><th>Profil</th>';
                 if (canPerformAdminActions) {
                     headerRow.innerHTML += '<th>Actions</th>';
                 }
@@ -1544,14 +1537,13 @@
                                 actionsHtml = `<td>`;
                                 const canManage = member.destinyUserInfo.membershipId !== membershipId && member.memberType < currentUserClanMemberType;
                                 if (canManage) {
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em; margin-right: 5px;" title="Exclure" onclick="event.stopPropagation(); handleClanAction('kick', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}')">🗑️</button>`; // event.stopPropagation() pour éviter d'ouvrir le profil
-                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" title="Changer le rang" onclick="event.stopPropagation(); handleClanAction('changeRank', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}', '${member.memberType}')">⬆️⬇️</button>`; // event.stopPropagation() pour éviter d'ouvrir le profil
+                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em; margin-right: 5px;" title="Exclure" onclick="event.stopPropagation(); handleClanAction('kick', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}')">🗑️</button>`;
+                                    actionsHtml += `<button class="action-button" style="padding: 5px 10px; font-size: 0.8em;" title="Changer le rang" onclick="event.stopPropagation(); handleClanAction('changeRank', '${groupId}', '${member.destinyUserInfo.membershipId}', '${member.destinyUserInfo.membershipType}', '${member.memberType}')">⬆️⬇️</button>`;
                                 }
                                 actionsHtml += `</td>`;
                             }
 
                             const row = document.createElement('tr');
-                            // Le clic sur la ligne entière est supprimé pour laisser place au bouton spécifique
                             row.innerHTML = `
                                 <td>${member.destinyUserInfo.bungieGlobalDisplayName}#${member.destinyUserInfo.bungieGlobalDisplayNameCode}</td> 
                                 <td>${memberTypes[member.memberType] || 'Inconnu'}</td>
@@ -1563,13 +1555,13 @@
                         });
                     } else {
                         const errorRow = document.createElement('tr');
-                        errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td>`;
+                        errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 5 : 4}" style="color: #ff7b7b;">Erreur lors du chargement des membres: ${membersData.Message}</td>`;
                         tableBody.appendChild(errorRow);
                     }
                 } catch (memberError) {
                     console.error("Erreur lors du chargement des membres:", memberError);
                     const errorRow = document.createElement('tr');
-                    errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 4 : 3}" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td>`;
+                    errorRow.innerHTML = `<td colspan="${canPerformAdminActions ? 5 : 4}" style="color: #ff7b7b;">Erreur lors du chargement des membres.</td>`;
                     tableBody.appendChild(errorRow);
                 }
                 memberTable.appendChild(tableBody);
@@ -2019,7 +2011,7 @@
                 ...Object.values(fullProfileData.characterInventories.data).flatMap(inv => inv.items)
             ];
 
-            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullOutProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+            const itemInstances = { ...(fullProfileData.itemComponents?.instances?.data || {}), ...(fullProfileData.profileInventory?.data?.itemComponents?.instances?.data || {}) };
 
             const categories = {
                 "Armes cinétiques": 1498876634, "Armes énergétiques": 2465295065, "Armes puissantes": 953998645,
