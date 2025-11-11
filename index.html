@@ -849,12 +849,11 @@
         <h1>Portail Destiny 2</h1>
         <p>Votre compagnon pour suivre vos personnages, votre inventaire et vos performances.</p>
         <button id="refreshBtn" class="hidden">Rafraîchir</button>
-        <button id="settingsBtn">Paramètres</button>
         <button id="logoutBtn" class="hidden">Se déconnecter</button>
     </header>
 
     <main>
-        <div id="loginContainer" class="login-container">
+        <div id="loginContainer" class="login-container hidden">
             <h2>Bienvenue, Gardien !</h2>
             <p>Connectez-vous avec votre compte Bungie.net pour commencer.</p>
             <button id="loginBtn">Se connecter avec Bungie</button>
@@ -890,11 +889,6 @@
                 <div id="searchHistoryList">
                 </div>
             </div>
-        </div>
-
-        <div id="settingsContainer" class="content-container hidden">
-            <h2>Paramètres</h2>
-            <div id="settingsContent"></div>
         </div>
 
         <div id="itemDetailModal" class="modal-overlay">
@@ -946,6 +940,11 @@
         <div id="historyContainer" class="content-container hidden">
             <h2>Historique des Activités</h2>
             <div id="historyList"></div>
+        </div>
+
+        <div id="settingsContainer" class="content-container hidden">
+            <h2>Paramètres</h2>
+            <div id="settingsContent"></div>
         </div>
 
         <div id="playerProfileModal" class="modal-overlay">
@@ -1031,7 +1030,6 @@
         const pgcrModal = document.getElementById('pgcrModal');
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
-        const settingsBtn = document.getElementById('settingsBtn');
         const settingsContainer = document.getElementById('settingsContainer');
         const settingsContent = document.getElementById('settingsContent');
 
@@ -1045,7 +1043,7 @@
             sectionOrder: [
                 'contentContainer', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
                 'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
-                'historyContainer', 'settingsContainer'
+                'historyContainer'
             ],
             sectionVisibility: {} 
         };
@@ -1061,6 +1059,11 @@
             displayLoadouts();
             displayClanLoadouts();
             loadSettings();
+            populateSettingsContent();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const authCode = urlParams.get('code');
+
             if (session) {
                 showContent();
                 if (Date.now() > session.accessTokenExpiresAt) {
@@ -1068,16 +1071,12 @@
                 } else {
                     getProfileDataWithToken(session.accessToken, session.membershipId);
                 }
-                return;
-            }
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
-
-            if (authCode) {
+            } else if (authCode) {
                 showContent();
                 window.history.replaceState({}, document.title, window.location.pathname);
                 getTokensWithAuthCode(authCode);
+            } else {
+                showLogin();
             }
         };
 
@@ -1267,6 +1266,16 @@
             } catch (error) {
                 playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du profil : ${error.message}</p>`;
             }
+        }
+
+        function showLogin() {
+            loginContainer.classList.remove('hidden');
+            contentContainer.classList.add('hidden');
+            logoutBtn.classList.add('hidden');
+            refreshBtn.classList.add('hidden');
+            document.querySelectorAll('.content-container').forEach(el => {
+                if(el.id !== 'loginContainer') el.classList.add('hidden');
+            });
         }
 
         function showContent() {
@@ -2575,7 +2584,7 @@
             } else {
                 const defaultSectionVisibility = {};
                 userSettings.sectionOrder.forEach(id => defaultSectionVisibility[id] = true);
-                defaultSectionVisibility['settingsContainer'] = false;
+                defaultSectionVisibility['contentContainer'] = true;
                 userSettings.sectionVisibility = defaultSectionVisibility;
             }
             applySettings();
@@ -2619,6 +2628,9 @@
                     }
                 }
             }
+            if (getSessionFromCache()) {
+                settingsContainer.classList.remove('hidden');
+            }
         }
 
         function applyOrderSettings() {
@@ -2629,6 +2641,7 @@
                     mainElement.appendChild(element);
                 }
             });
+            mainElement.appendChild(settingsContainer);
         }
 
         function populateSettingsContent() {
@@ -2657,7 +2670,7 @@
 
             const sectionVisibilityOptionsDiv = document.getElementById('sectionVisibilityOptions');
             for (const sectionId in mainContentSectionElements) {
-                if (sectionId === 'settingsContainer') continue;
+                if (sectionId === 'settingsContainer' || sectionId === 'contentContainer') continue;
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const label = document.createElement('label');
@@ -2681,7 +2694,7 @@
 
             const sectionOrderListUl = document.getElementById('sectionOrderList');
             userSettings.sectionOrder.forEach((sectionId) => {
-                if (sectionId === 'settingsContainer') return;
+                if (sectionId === 'settingsContainer' || sectionId === 'contentContainer') return;
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
                     const li = document.createElement('li');
@@ -2706,17 +2719,6 @@
                 }
             });
         }
-
-        settingsBtn.addEventListener('click', () => {
-            playButtonClickSound();
-            const settingsVisible = !settingsContainer.classList.contains('hidden');
-            userSettings.sectionVisibility['settingsContainer'] = !settingsVisible;
-            saveSettings();
-            applyVisibilitySettings();
-            if (!settingsVisible) {
-                populateSettingsContent();
-            }
-        });
     </script>
 </body>
   
