@@ -2694,6 +2694,7 @@
             for (const sectionId in mainContentSectionElements) {
                 const element = mainContentSectionElements[sectionId];
                 if (element) {
+                    const label = document.createElement('label');
                     const h2 = element.querySelector('h2');
                     const sectionName = h2 ? h2.textContent : sectionId;
                     label.innerHTML = `
