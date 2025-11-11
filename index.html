@@ -1033,9 +1033,13 @@
             border: 1px solid var(--border-color);
             color: var(--text-color);
             padding: 12px 20px;
+            padding: 10px 20px;
             text-transform: uppercase;
             font-weight: 600;
             letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
         }
         #themeSelector button.active {
             border-color: var(--accent-color);
@@ -1129,6 +1133,7 @@
                     <h3 id="itemDetailName"></h3>
                 </div>
                 <div id="itemDetailBody" class="item-detail-body"></div>
+                <div id="itemDetailActions" class="item-detail-actions"></div>
             </div>
         </div>
 
@@ -2937,30 +2942,52 @@
         };
 
         function applyVisibilitySettings() {
+            const sideNav = document.getElementById('side-nav');
             for (const sectionId in mainContentSectionElements) {
                 const element = mainContentSectionElements[sectionId];
+                const navLink = sideNav.querySelector(`a[href="#${sectionId}"]`);
+                const isVisible = userSettings.sectionVisibility[sectionId] === undefined || userSettings.sectionVisibility[sectionId];
+
                 if (element) {
-                    if (userSettings.sectionVisibility[sectionId] === undefined || userSettings.sectionVisibility[sectionId]) {
+                    if (isVisible) {
                         element.classList.remove('hidden');
                     } else {
                         element.classList.add('hidden');
                     }
                 }
+                if (navLink) {
+                    if (isVisible) {
+                        navLink.classList.remove('hidden');
+                    } else {
+                        navLink.classList.add('hidden');
+                    }
+                }
             }
             if (getSessionFromCache()) {
                 settingsContainer.classList.remove('hidden');
+                const settingsLink = sideNav.querySelector('a[href="#settingsContainer"]');
+                if (settingsLink) settingsLink.classList.remove('hidden');
             }
         }
 
         function applyOrderSettings() {
             const mainElement = document.querySelector('main');
+            const sideNav = document.getElementById('side-nav');
             userSettings.sectionOrder.forEach(sectionId => {
                 const element = mainContentSectionElements[sectionId];
                 if (element && mainElement.contains(element)) {
                     mainElement.appendChild(element);
                 }
+                const navLink = sideNav.querySelector(`a[href="#${sectionId}"]`);
+                if (navLink) {
+                    sideNav.appendChild(navLink);
+                }
             });
             mainElement.appendChild(settingsContainer);
+            const settingsNavLink = sideNav.querySelector('a[href="#settingsContainer"]');
+            if (settingsNavLink) {
+                sideNav.appendChild(settingsNavLink);
+            }
         }
 
         function populateSettingsContent() {
