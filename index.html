@@ -2047,11 +2047,11 @@
                 const characterProgressionsData = profileData.characterProgressions.data;
                 const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
 
-                for (const charId in characterMilestones) {
+                for (const charId in characterProgressionsData) {
                     const charClass = classMap[profileData.characters.data[charId].classType];
                     weeklyHtml += `<h5 style="color: var(--accent-color);">${charClass}</h5>`;
                     
-                    const milestonesForChar = characterMilestones[charId].milestones;
+                    const milestonesForChar = characterProgressionsData[charId].milestones;
                     let hasMilestones = false;
 
                     for (const milestoneHash in milestonesForChar) {
