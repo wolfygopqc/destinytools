@@ -1784,12 +1784,26 @@
                 vaultDisplayContainer.classList.remove('hidden');
             }
 
+            // Ajout des gestionnaires d'événements pour le drop sur le coffre
+            vaultGrid.dataset.characterId = 'vault';
+            vaultGrid.addEventListener('dragover', handleDragOver);
+            vaultGrid.addEventListener('dragleave', handleDragLeave);
+            vaultGrid.addEventListener('drop', handleDrop);
+
+            // Affichage de l'inventaire global
+            await displayFullInventory(data);
+            setupInventoryTabs();
+
             for (const characterId of characterIds) {
                 const characterCard = await createCharacterCard(characterId, data, itemInstances, true);
                 if (characterCard) {
                     charactersDiv.appendChild(characterCard);
                 }
             }
+
+            await displayQuests(data, characterIds);
+
+            await displayVendors(data);
 
             questsList.innerHTML = '';
             for (const characterId of characterIds) {
@@ -1873,8 +1887,6 @@
                 }
             }
 
-            await displayVendors(data);
-
             await displayActivityHistory(data);
 
             if (refreshIntervalId) {
@@ -1890,6 +1902,88 @@
                     clearInterval(refreshIntervalId);
                 }
             }, 300000);
+        }
+
+        function setupInventoryTabs() {
+            const tabControls = document.getElementById('inventoryTabControls');
+            const tabContents = vaultDisplayContainer.querySelectorAll('.tab-content');
+
+            tabControls.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const tabId = e.target.dataset.tab;
+
+                    tabControls.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        if (content.id === tabId) {
+                            content.classList.add('active');
+                        } else {
+                            content.classList.remove('active');
+                        }
+                    });
+                }
+            });
+        }
+
+        async function displayFullInventory(data) {
+            const allItems = [
+                ...(data.profileInventory?.data?.items || []),
+                ...Object.values(data.characterInventories?.data || {}).flatMap(inv => inv.items)
+            ];
+
+            const weaponBucketHashes = [1498876634, 2465295065, 953998645];
+            const armorBucketHashes = [3448274439, 3551918588, 14239492, 20886954, 4350422948];
+
+            const allWeapons = allItems.filter(item => weaponBucketHashes.includes(item.bucketHash));
+            const allArmor = allItems.filter(item => armorBucketHashes.includes(item.bucketHash));
+
+            const weaponsGrid = document.querySelector('#allWeaponsContent .inventory-grid');
+            const armorGrid = document.querySelector('#allArmorContent .inventory-grid');
+            weaponsGrid.innerHTML = '';
+            armorGrid.innerHTML = '';
+
+            const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
+
+            for (const weapon of allWeapons) {
+                const itemElement = await createItemElement(weapon, itemInstances, data, 'inventory');
+                weaponsGrid.appendChild(itemElement);
+            }
+            for (const armor of allArmor) {
+                const itemElement = await createItemElement(armor, itemInstances, data, 'inventory');
+                armorGrid.appendChild(itemElement);
+            }
+        }
+
+        async function displayCollections(data) {
+            const collectionsContent = document.getElementById('collectionsContent');
+            collectionsContent.innerHTML = '<div class="loader"></div>';
+            const collectiblesData = data.profileCollectibles.data.collectibles;
+            const rootNode = await getDefinition('DestinyPresentationNodeDefinition', data.profileCollectibles.data.collectionCategoriesRootNodeHash);
+
+            let html = '';
+            for (const categoryNode of rootNode.children.presentationNodes) {
+                const categoryDef = await getDefinition('DestinyPresentationNodeDefinition', categoryNode.presentationNodeHash);
+                html += `<h3 data-node-hash="${categoryDef.hash}">${categoryDef.displayProperties.name}</h3>`;
+                html += `<div class="collection-grid" id="collection-node-${categoryDef.hash}">`;
+                for (const collectibleNode of categoryDef.children.collectibles) {
+                    const collectibleDef = await getDefinition('DestinyCollectibleDefinition', collectibleNode.collectibleHash);
+                    const state = collectiblesData[collectibleNode.collectibleHash].state;
+                    const isAcquired = !(state & 1); // Le bit 0 à 1 signifie "not acquired"
+                    html += `<div class="collection-item ${isAcquired ? 'acquired' : 'not-acquired'}" title="${collectibleDef.displayProperties.name}">
+                                <img src="https://www.bungie.net${collectibleDef.displayProperties.icon}">
+                             </div>`;
+                }
+                html += `</div>`;
+            }
+            collectionsContent.innerHTML = html;
+
+            collectionsContent.querySelectorAll('h3').forEach(h3 => {
+                h3.addEventListener('click', () => {
+                    const grid = document.getElementById(`collection-node-${h3.dataset.nodeHash}`);
+                    grid.style.display = grid.style.display === 'grid' ? 'none' : 'grid';
+                });
+            });
         }
 
         async function displayVendors(profileData) {
@@ -2364,6 +2458,7 @@
             };
 
             const card = document.createElement('div');
+            card.dataset.characterId = characterId;
             card.className = 'character-card';
 
             const statOrder = [
@@ -2412,6 +2507,11 @@
             card.style.backgroundSize = 'cover';
             card.style.backgroundPosition = 'center';
 
+            // Ajout des gestionnaires d'événements pour le drop sur le personnage
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('dragleave', handleDragLeave);
+            card.addEventListener('drop', handleDrop);
+
             if (isOwnProfile) {
                 if (!data.characterEquipment || !data.characterEquipment.data || !data.characterEquipment.data[characterId]) {
                     console.warn(`No equipment data for character ${characterId}. Skipping loadout save section.`);
@@ -2447,6 +2547,7 @@
             const power = instance?.primaryStat?.value || '';            
             
             const itemElement = document.createElement('div');
+            itemElement.draggable = true;
             itemElement.className = 'item-slot';
             const img = document.createElement('img');
             img.className = 'item-icon';
@@ -2467,6 +2568,19 @@
                 playButtonClickSound();
                 e.stopPropagation(); 
                 showItemDetailModal(item, data, characterId); 
+            });
+
+            itemElement.addEventListener('dragstart', (e) => {
+                e.stopPropagation();
+                e.target.classList.add('dragging');
+                const itemData = {
+                    itemInstanceId: item.itemInstanceId,
+                    itemHash: item.itemHash,
+                    quantity: item.quantity,
+                    sourceCharacterId: characterId
+                };
+                e.dataTransfer.setData('application/json', JSON.stringify(itemData));
+                e.dataTransfer.effectAllowed = 'move';
             });
             return itemElement;
         }
@@ -2543,6 +2657,111 @@
                 itemDetailName.textContent = "Erreur";
                 itemDetailBody.innerHTML = `<p>${error.message}</p>`;
                 itemDetailModal.classList.add('visible');
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const target = e.currentTarget;
+            const itemData = JSON.parse(e.dataTransfer.getData('application/json') || '{}');
+            // Ne pas montrer l'effet si on survole la source elle-même
+            if (target.dataset.characterId !== itemData.sourceCharacterId) {
+                target.classList.add('drag-over');
+                e.dataTransfer.dropEffect = 'move';
+            } else {
+                e.dataTransfer.dropEffect = 'none';
+            }
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dropTarget = e.currentTarget;
+            dropTarget.classList.remove('drag-over');
+
+            const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
+            const targetCharacterId = dropTarget.dataset.characterId;
+
+            // Annuler si on dépose sur la source
+            if (itemData.sourceCharacterId === targetCharacterId) {
+                document.querySelector('.dragging')?.classList.remove('dragging');
+                return;
+            }
+
+            // Déterminer si on transfère vers le coffre
+            const transferToVault = targetCharacterId === 'vault';
+
+            // Le personnage de destination est soit le targetId, soit le personnage source si on déplace vers le coffre
+            const characterIdForApi = transferToVault ? itemData.sourceCharacterId : targetCharacterId;
+
+            // Afficher un retour visuel
+            const draggedElement = document.querySelector('.dragging');
+            if (draggedElement) {
+                draggedElement.innerHTML += '<div class="loader" style="position:absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px;"></div>';
+            }
+
+            await performItemAction('transfer', {
+                itemInstanceId: itemData.itemInstanceId,
+                itemHash: itemData.itemHash,
+                quantity: itemData.quantity
+            }, characterIdForApi, transferToVault);
+        }
+
+        async function performItemAction(action, item, targetCharacterId, transferToVault = false) {
+            const session = getSessionFromCache();
+            if (!session) return alert("Session expirée. Veuillez vous reconnecter.");
+
+            const statusP = document.getElementById('itemStatus');
+            if (statusP) statusP.textContent = 'Action en cours...';
+
+            let endpoint = '';
+            let body = {};
+
+            if (action === 'equip') {
+                endpoint = 'https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItem/';
+                body = {
+                    itemId: item.itemInstanceId,
+                    characterId: targetCharacterId,
+                    membershipType: currentUserInfo.membershipType
+                };
+            } else if (action === 'transfer') {
+                endpoint = 'https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/';
+                body = {
+                    itemReferenceHash: item.itemHash,
+                    stackSize: item.quantity,
+                    transferToVault: transferToVault,
+                    itemId: item.itemInstanceId,
+                    characterId: targetCharacterId,
+                    membershipType: currentUserInfo.membershipType
+                };
+            } else {
+                if (statusP) statusP.textContent = 'Action inconnue.';
+                return;
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': BUNGIE_API_KEY, 'Authorization': `Bearer ${session.accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json();
+                if (data.ErrorCode === 1) {
+                    if (statusP) statusP.textContent = 'Action réussie ! Rafraîchissement...';
+                    setTimeout(() => { itemDetailModal.classList.remove('visible'); refreshBtn.click(); }, 500);
+                } else { throw new Error(data.Message); }
+            } catch (error) {
+                console.error(`Erreur lors de l'action '${action}':`, error);
+                if (statusP) statusP.textContent = `Erreur: ${error.message}`;
+                alert(`Erreur lors de l'action : ${error.message}. Assurez-vous que l'objet n'est pas équipé si vous essayez de le transférer et que vous avez de la place.`);
+                refreshBtn.click(); // Rafraîchir pour nettoyer l'état visuel
             }
         }
 
