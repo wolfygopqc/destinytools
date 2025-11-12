@@ -1244,6 +1244,11 @@
             <div id="historyList"></div>
         </div>
 
+        <div id="weeklyContainer" class="content-container hidden">
+            <h2>Activités Hebdomadaires</h2>
+            <div id="weeklyInfo"><div class="loader"></div></div>
+        </div>
+
         <div id="settingsContainer" class="content-container hidden">
             <h2>Paramètres</h2>
             <div id="settingsContent"></div>
@@ -1296,6 +1301,7 @@
         <a href="#clanContainer" title="Clan"><span class="nav-text">Clan</span></a>
         <a href="#historyContainer" title="Historique"><span class="nav-text">Historique</span></a>
         <a href="#settingsContainer" title="Paramètres"><span class="nav-text">Paramètres</span></a>
+        <a href="#weeklyContainer" title="Hebdomadaire"><span class="nav-text">Hebdo</span></a>
     </nav>
 
 
@@ -1347,6 +1353,8 @@
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
         const settingsContainer = document.getElementById('settingsContainer');
+        const weeklyContainer = document.getElementById('weeklyContainer');
+        const weeklyInfoDiv = document.getElementById('weeklyInfo');
         const settingsContent = document.getElementById('settingsContent');
 
         const perkDefinitionsCache = {};
@@ -1362,6 +1370,7 @@
                 'theme',
                 'contentContainer', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
                 'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
+                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer', 'weeklyContainer',
                 'historyContainer'
             ],
             sectionVisibility: {} 
@@ -1798,6 +1807,7 @@
                 const membershipType = destinyProfile.membershipType;
 
                 const components = [100, 102, 200, 201, 202, 205, 300, 304, 305].join(',');
+                const components = [100, 102, 200, 201, 202, 204, 205, 300, 304, 305].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
@@ -1969,6 +1979,8 @@
 
             await displayActivityHistory(data);
 
+            await displayWeeklyActivities(data);
+
             if (refreshIntervalId) {
                 clearInterval(refreshIntervalId);
             }
@@ -1982,6 +1994,104 @@
                     clearInterval(refreshIntervalId);
                 }
             }, 300000);
+        }
+
+        async function displayWeeklyActivities(profileData) {
+            weeklyInfoDiv.innerHTML = '<div class="loader"></div>';
+            try {
+                const publicMilestonesRes = await fetch('https://www.bungie.net/Platform/Destiny2/Milestones/', {
+                    headers: { 'X-API-Key': BUNGIE_API_KEY }
+                });
+                const publicMilestonesData = await publicMilestonesRes.json();
+                if (publicMilestonesData.ErrorCode !== 1) throw new Error(publicMilestonesData.Message);
+
+                const publicMilestones = publicMilestonesData.Response;
+                let weeklyHtml = '<div style="text-align: left;">';
+
+                // --- Rotations Raid & Donjon ---
+                const featuredRaidHash = 422102671; // Featured Raid
+                const featuredDungeonHash = 3 dungeonhash; // Featured Dungeon
+
+                const featuredRaidMilestone = publicMilestones[featuredRaidHash];
+                const featuredDungeonMilestone = publicMilestones[featuredDungeonHash];
+
+                weeklyHtml += '<h4>Rotations de la semaine</h4>';
+                if (featuredRaidMilestone?.activities?.[0]?.activityHash) {
+                    const activityDef = await getDefinition('DestinyActivityDefinition', featuredRaidMilestone.activities[0].activityHash);
+                    weeklyHtml += `<p><strong>Raid à la une :</strong> ${activityDef?.displayProperties.name || 'Inconnu'}</p>`;
+                }
+                if (featuredDungeonMilestone?.activities?.[0]?.activityHash) {
+                    const activityDef = await getDefinition('DestinyActivityDefinition', featuredDungeonMilestone.activities[0].activityHash);
+                    weeklyHtml += `<p><strong>Donjon à la une :</strong> ${activityDef?.displayProperties.name || 'Inconnu'}</p>`;
+                }
+
+                // --- Secteurs Oubliés ---
+                const legendLostSectorMilestoneHash = 2919946431; // Legend LS
+                const masterLostSectorMilestoneHash = 2919946430; // Master LS
+
+                const legendLS = publicMilestones[legendLostSectorMilestoneHash];
+                const masterLS = publicMilestones[masterLostSectorMilestoneHash];
+
+                weeklyHtml += '<h4 style="margin-top: 20px;">Secteurs Oubliés du jour</h4>';
+                if (legendLS?.activities?.[0]?.activityHash) {
+                    const activityDef = await getDefinition('DestinyActivityDefinition', legendLS.activities[0].activityHash);
+                    const rewardDef = await getDefinition('DestinyInventoryItemDefinition', legendLS.rewards[0].rewardEntries[0].items[0].itemHash);
+                    weeklyHtml += `<p><strong>Légende :</strong> ${activityDef?.displayProperties.name} (Récompense : ${rewardDef?.displayProperties.name || 'Exotique'})</p>`;
+                }
+                if (masterLS?.activities?.[0]?.activityHash) {
+                    const activityDef = await getDefinition('DestinyActivityDefinition', masterLS.activities[0].activityHash);
+                    const rewardDef = await getDefinition('DestinyInventoryItemDefinition', masterLS.rewards[0].rewardEntries[0].items[0].itemHash);
+                    weeklyHtml += `<p><strong>Maîtrise :</strong> ${activityDef?.displayProperties.name} (Récompense : ${rewardDef?.displayProperties.name || 'Exotique'})</p>`;
+                }
+
+                // --- Défis hebdomadaires par personnage ---
+                weeklyHtml += '<h4 style="margin-top: 20px;">Défis hebdomadaires</h4>';
+                const characterMilestones = profileData.milestones.data;
+                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+
+                for (const charId in characterMilestones) {
+                    const charClass = classMap[profileData.characters.data[charId].classType];
+                    weeklyHtml += `<h5 style="color: var(--accent-color);">${charClass}</h5>`;
+                    
+                    const milestonesForChar = characterMilestones[charId].milestones;
+                    let hasMilestones = false;
+
+                    for (const milestoneHash in milestonesForChar) {
+                        const milestoneData = milestonesForChar[milestoneHash];
+                        const milestoneDef = await getDefinition('DestinyMilestoneDefinition', milestoneHash);
+
+                        // Filtrer pour ne garder que les défis pertinents (puissants/pinacles)
+                        if (milestoneDef && milestoneDef.rewards && milestoneDef.displayProperties.name) {
+                            const isPowerful = Object.values(milestoneDef.rewards).some(rewardCategory => 
+                                rewardCategory.rewardEntries.some(entry => 
+                                    entry.rewardItems.some(item => [3789021730, 4247210736].includes(item.itemHash)) // Puissant / Pinacle
+                                )
+                            );
+
+                            if (isPowerful) {
+                                hasMilestones = true;
+                                const isCompleted = milestoneData.availableQuests?.[0]?.status.completed ?? milestoneData.activities?.[0]?.phases?.[0]?.complete ?? false;
+                                weeklyHtml += `
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                        <span style="color: ${isCompleted ? '#a5d6a7' : '#ef9a9a'}; font-size: 1.2em;">${isCompleted ? '✓' : '✗'}</span>
+                                        <span>${milestoneDef.displayProperties.name}</span>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }
+                    if (!hasMilestones) {
+                        weeklyHtml += `<p>Aucun défi puissant/pinacle trouvé pour ce personnage.</p>`;
+                    }
+                }
+
+                weeklyHtml += '</div>';
+                weeklyInfoDiv.innerHTML = weeklyHtml;
+
+            } catch (error) {
+                console.error("Erreur lors du chargement des activités hebdomadaires:", error);
+                weeklyInfoDiv.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement des activités hebdomadaires : ${error.message}</p>`;
+            }
         }
 
         async function displayVendors(profileData) {
@@ -3121,6 +3231,7 @@
             clanLoadoutsContainer: document.getElementById('clanLoadoutsContainer'),
             clanContainer: document.getElementById('clanContainer'),
             historyContainer: document.getElementById('historyContainer'),
+            weeklyContainer: document.getElementById('weeklyContainer'),
             settingsContainer: document.getElementById('settingsContainer')
         };
 
