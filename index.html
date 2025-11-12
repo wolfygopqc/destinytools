@@ -1279,6 +1279,7 @@
         const pgcrModal = document.getElementById('pgcrModal');
         const pgcrModalCloseBtn = document.getElementById('pgcrModalCloseBtn');
         const refreshBtn = document.getElementById('refreshBtn');
+        const collectionsContainer = document.getElementById('collectionsContainer');
         const settingsContainer = document.getElementById('settingsContainer');
         const settingsContent = document.getElementById('settingsContent');
 
@@ -1293,7 +1294,7 @@
             sectionOrder: [
                 'theme',
                 'contentContainer', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
-                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
+                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer', 'collectionsContainer',
                 'historyContainer'
             ],
             sectionVisibility: {} 
@@ -3181,6 +3182,7 @@
             loadoutsContainer: document.getElementById('loadoutsContainer'),
             clanLoadoutsContainer: document.getElementById('clanLoadoutsContainer'),
             clanContainer: document.getElementById('clanContainer'),
+            collectionsContainer: document.getElementById('collectionsContainer'),
             historyContainer: document.getElementById('historyContainer'),
             settingsContainer: document.getElementById('settingsContainer')
         };
