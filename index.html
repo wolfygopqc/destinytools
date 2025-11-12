@@ -1181,11 +1181,6 @@
             <div id="clanInfo"></div>
         </div>
 
-        <div id="collectionsContainer" class="content-container hidden">
-            <h2>Collections</h2>
-            <div id="collectionsContent"></div>
-        </div>
-
         <div id="historyContainer" class="content-container hidden">
             <h2>Historique des Activités</h2>
             <div id="historyList"></div>
@@ -1193,6 +1188,10 @@
 
         <div id="settingsContainer" class="content-container hidden">
             <h2>Paramètres</h2>
+            <div id="collectionsContainer" class="content-container hidden">
+                <h2>Collections</h2>
+                <div id="collectionsContent"></div>
+            </div>
             <div id="settingsContent"></div>
         </div>
 
@@ -1396,7 +1395,7 @@
 
             // Met en place le nouvel intervalle de 12 secondes
             // ATTENTION : C'est un intervalle très court qui peut causer des problèmes avec l'API de Bungie.
-            refreshIntervalId = setInterval(refreshAllData, 10000); 
+            refreshIntervalId = setInterval(refreshAllData, 12000); 
         }
 
         logoutBtn.addEventListener('click', () => {
@@ -1412,6 +1411,9 @@
             playButtonClickSound();
             const session = getSessionFromCache();
             if (session) {
+                loadingDiv.classList.remove('hidden');
+                profileDataDiv.classList.add('hidden');
+                vaultDisplayContainer.classList.add('hidden');
                 refreshAllData();
             }
         });
@@ -1718,7 +1720,7 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [100, 102, 103, 200, 201, 202, 205, 300, 304, 305, 800].join(','); // Ajout de 103 (version) et 800 (collections)
+                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
                     headers: {
@@ -1729,13 +1731,6 @@
                 if (!profileResponse.ok) throw new Error(`Impossible de récupérer les données des personnages (Status: ${profileResponse.status})`);
 
                 const profileData = await profileResponse.json();
-
-                // Vérification intelligente : ne met à jour que si les données ont changé
-                if (fullProfileData && fullProfileData.profile.data.dateLastPlayed === profileData.Response.profile.data.dateLastPlayed) {
-                    console.log("Aucune nouvelle donnée détectée, rafraîchissement ignoré.");
-                    return; // Pas de changement, on arrête là
-                }
-
                 fullProfileData = profileData.Response;
                 await displayData(profileData.Response);
 
@@ -1766,6 +1761,9 @@
                 console.error("No data to display.");
                 return;
             }
+            loadingDiv.classList.add('hidden');
+            profileDataDiv.classList.remove('hidden');
+
             const profileInfo = data.profile.data.userInfo;
             currentUserInfo = { bungieGlobalDisplayName: profileInfo.bungieGlobalDisplayName, bungieGlobalDisplayNameCode: profileInfo.bungieGlobalDisplayNameCode, membershipId: profileInfo.membershipId, membershipType: profileInfo.membershipType };
             userInfoDiv.innerHTML = `<h3>${profileInfo.bungieGlobalDisplayName}#${profileInfo.bungieGlobalDisplayNameCode}</h3>`;
@@ -1773,10 +1771,12 @@
             await displayClanInfo(data);
 
             charactersDiv.innerHTML = '';
+
             const characterIds = data.profile.data.characterIds;
             const itemInstances = { ...(data.itemComponents?.instances?.data || {}), ...(data.profileInventory?.data?.itemComponents?.instances?.data || {}) };
             
             if (data.profileInventory?.data?.items) {
+                vaultGrid.innerHTML = '';
                 const vaultInventory = data.profileInventory.data.items;
                 
                 vaultInventory.sort((a, b) => a.bucketHash - b.bucketHash);
@@ -1795,6 +1795,8 @@
                         vaultGrid.appendChild(emptySlot);
                     }
                 }
+    
+                vaultDisplayContainer.classList.remove('hidden');
             }
 
             // Ajout des gestionnaires d'événements pour le drop sur le coffre
@@ -1818,12 +1820,103 @@
 
             await displayVendors(data);
 
-            await displayCollections(data);
+            questsList.innerHTML = '';
+            for (const characterId of characterIds) {
+                const char = data.characters.data[characterId];
+                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
+                const questsInventory = data.characterInventories?.data?.[characterId]?.items.filter(item => item.bucketHash === 1345459588);
+
+                if (questsInventory && questsInventory.length > 0) {
+                    const charQuestsContainer = document.createElement('div');
+                    charQuestsContainer.innerHTML = `<h4>${classMap[char.classType]}</h4>`;
+
+                    for (const questItem of questsInventory) {
+                        const questDef = await getDefinition('DestinyInventoryItemDefinition', questItem.itemHash);
+                        if (!questDef || !questDef.displayProperties.name) continue;
+
+                        const objectives = data.characterProgressions?.data?.[characterId]?.uninstancedItemObjectives[questItem.itemHash];
+                        let objectivesHtml = '';
+
+                        if (objectives && objectives.length > 0) {
+                            for (const objective of objectives) {
+                                const objectiveDef = await getDefinition('DestinyObjectiveDefinition', objective.objectiveHash);
+                                if (!objectiveDef) continue;
+
+                                const progress = objective.progress || 0;
+                                const total = objective.completionValue;
+                                const percentage = total > 0 ? (progress / total) * 100 : 0;
+                                
+                                objectivesHtml += `
+                                    <div class="quest-progress-text">${objectiveDef.progressDescription || 'Progression'} ${progress} / ${total}</div>
+                                    <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
+                                `;
+                            }
+                        }
+
+                        let detailsHtml = '';
+                        if (questDef.displaySource) {
+                            detailsHtml += `<div class="quest-details">📍 ${questDef.displaySource}</div>`;
+                        }
+
+                        let rewardsHtml = '';
+                        if (questDef.value && questDef.value.itemValue.length > 0) {
+                            rewardsHtml += `<div class="quest-rewards-section"><h5>Récompenses</h5>`;
+                            for (const rewardItem of questDef.value.itemValue) {
+                                const rewardDef = await getDefinition('DestinyInventoryItemDefinition', rewardItem.itemHash);
+                                if (rewardDef) {
+                                    rewardsHtml += `
+                                        <div class="quest-reward-item">
+                                            <img src="https://www.bungie.net${rewardDef.displayProperties.icon}" />
+                                            <span>${rewardDef.displayProperties.name}</span>
+                                            <span>x${rewardItem.quantity}</span>
+                                        </div>
+                                    `;
+                                }
+                            }
+                            rewardsHtml += `</div>`;
+                        }
+
+                        const questElement = document.createElement('div');
+                        questElement.className = 'quest-item';
+                        questElement.innerHTML = `
+                            <img src="https://www.bungie.net${questDef.displayProperties.icon}" />
+                            <div class="quest-info">
+                                <strong>${questDef.displayProperties.name}</strong>
+                                <div class="quest-collapsible-content">
+                                    ${objectivesHtml}
+                                    ${detailsHtml}
+                                    ${rewardsHtml}
+                                </div>
+                            </div>
+                        `;
+                        const collapsibleContent = questElement.querySelector('.quest-collapsible-content');
+                        questElement.addEventListener('click', () => {
+                            questElement.classList.toggle('active');
+                            collapsibleContent.style.maxHeight = collapsibleContent.style.maxHeight 
+                                ? null 
+                                : collapsibleContent.scrollHeight + "px";
+                        });
+                        charQuestsContainer.appendChild(questElement);
+                    }
+                    questsList.appendChild(charQuestsContainer);
+                }
+            }
+
             await displayActivityHistory(data);
 
-            // Masquer le loader et afficher le contenu une fois tout chargé
-            loadingDiv.classList.add('hidden');
-            profileDataDiv.classList.remove('hidden');
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+            }
+            refreshIntervalId = setInterval(() => {
+                const session = getSessionFromCache();
+                if (session) {
+                    if (Date.now() > session.accessTokenExpiresAt) { 
+                        refreshToken(session.refreshToken);
+                    }
+                } else {
+                    clearInterval(refreshIntervalId);
+                }
+            }, 300000);
         }
 
         function setupInventoryTabs() {
@@ -1882,7 +1975,6 @@
             collectionsContent.innerHTML = '<div class="loader"></div>';
             const collectiblesData = data.profileCollectibles.data.collectibles;
             const rootNode = await getDefinition('DestinyPresentationNodeDefinition', data.profileCollectibles.data.collectionCategoriesRootNodeHash);
-            if (!rootNode) { collectionsContent.innerHTML = "Impossible de charger les données des collections."; return; }
 
             let html = '';
             for (const categoryNode of rootNode.children.presentationNodes) {
@@ -1890,7 +1982,6 @@
                 html += `<h3 data-node-hash="${categoryDef.hash}">${categoryDef.displayProperties.name}</h3>`;
                 html += `<div class="collection-grid" id="collection-node-${categoryDef.hash}">`;
                 for (const collectibleNode of categoryDef.children.collectibles) {
-                    if (!collectiblesData[collectibleNode.collectibleHash]) continue;
                     const collectibleDef = await getDefinition('DestinyCollectibleDefinition', collectibleNode.collectibleHash);
                     const state = collectiblesData[collectibleNode.collectibleHash].state;
                     const isAcquired = !(state & 1); // Le bit 0 à 1 signifie "not acquired"
@@ -1908,71 +1999,6 @@
                     grid.style.display = grid.style.display === 'grid' ? 'none' : 'grid';
                 });
             });
-        }
-
-        async function displayQuests(data, characterIds) {
-            questsList.innerHTML = '';
-            for (const characterId of characterIds) {
-                const char = data.characters.data[characterId];
-                const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
-                const questsInventory = data.characterInventories?.data?.[characterId]?.items.filter(item => item.bucketHash === 1345459588);
-
-                if (questsInventory && questsInventory.length > 0) {
-                    const charQuestsContainer = document.createElement('div');
-                    charQuestsContainer.innerHTML = `<h4>${classMap[char.classType]}</h4>`;
-
-                    for (const questItem of questsInventory) {
-                        const questDef = await getDefinition('DestinyInventoryItemDefinition', questItem.itemHash);
-                        if (!questDef || !questDef.displayProperties.name) continue;
-
-                        const objectives = data.characterProgressions?.data?.[characterId]?.uninstancedItemObjectives[questItem.itemHash];
-                        let objectivesHtml = '';
-
-                        if (objectives && objectives.length > 0) {
-                            for (const objective of objectives) {
-                                const objectiveDef = await getDefinition('DestinyObjectiveDefinition', objective.objectiveHash);
-                                if (!objectiveDef) continue;
-
-                                const progress = objective.progress || 0;
-                                const total = objective.completionValue;
-                                const percentage = total > 0 ? (progress / total) * 100 : 0;
-                                
-                                objectivesHtml += `
-                                    <div class="quest-progress-text">${objectiveDef.progressDescription || 'Progression'} ${progress} / ${total}</div>
-                                    <div class="quest-progress-bar-wrapper"><div class="quest-progress-bar" style="width: ${percentage}%;"></div></div>
-                                `;
-                            }
-                        }
-
-                        let detailsHtml = '';
-                        if (questDef.displaySource) {
-                            detailsHtml += `<div class="quest-details">📍 ${questDef.displaySource}</div>`;
-                        }
-
-                        const questElement = document.createElement('div');
-                        questElement.className = 'quest-item';
-                        questElement.innerHTML = `
-                            <img src="https://www.bungie.net${questDef.displayProperties.icon}" />
-                            <div class="quest-info">
-                                <strong>${questDef.displayProperties.name}</strong>
-                                <div class="quest-collapsible-content">
-                                    ${objectivesHtml}
-                                    ${detailsHtml}
-                                </div>
-                            </div>
-                        `;
-                        const collapsibleContent = questElement.querySelector('.quest-collapsible-content');
-                        questElement.addEventListener('click', () => {
-                            questElement.classList.toggle('active');
-                            collapsibleContent.style.maxHeight = collapsibleContent.style.maxHeight 
-                                ? null 
-                                : collapsibleContent.scrollHeight + "px";
-                        });
-                        charQuestsContainer.appendChild(questElement);
-                    }
-                    questsList.appendChild(charQuestsContainer);
-                }
-            }
         }
 
         async function displayVendors(profileData) {
