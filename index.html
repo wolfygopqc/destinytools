@@ -2482,24 +2482,30 @@
             }
             statsHtml += '</div>';
 
+            const cardContent = document.createElement('div');
+            cardContent.className = 'character-info';
+            cardContent.innerHTML = `
+                <h3>${classMap[char.classType] || 'Inconnue'}</h3>
+                <p><strong>Lumière :</strong> ${char.light}</p>
+                <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
+                ${statsHtml}
+            `;
+
             const equipmentGrid = document.createElement('div');
             equipmentGrid.className = 'equipment-grid';
-            const equipmentData = data.characterEquipment.data[characterId].items;
-            const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
-            
-            for (const item of equipmentData.filter(item => relevantSlots.includes(item.bucketHash)).sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))) {
-                const itemElement = await createItemElement(item, itemInstances, data, characterId);
-                equipmentGrid.appendChild(itemElement);
+
+            if (data.characterEquipment?.data?.[characterId]?.items) {
+                const equipmentData = data.characterEquipment.data[characterId].items;
+                const relevantSlots = [1498876634, 2465295065, 953998645, 3448274439, 3551918588, 14239492, 20886954, 4350422948];
+                
+                for (const item of equipmentData.filter(item => relevantSlots.includes(item.bucketHash)).sort((a, b) => relevantSlots.indexOf(a.bucketHash) - relevantSlots.indexOf(b.bucketHash))) {
+                    const itemElement = await createItemElement(item, itemInstances, data, characterId);
+                    equipmentGrid.appendChild(itemElement);
+                }
             }
-            card.innerHTML = `
-                <div class="character-info">
-                    <h3>${classMap[char.classType] || 'Inconnue'}</h3>
-                    <p><strong>Lumière :</strong> ${char.light}</p>
-                    <p><strong>Race :</strong> ${raceMap[char.raceType] || 'Inconnue'}</p>
-                    ${statsHtml}
-                </div>
-            `;
-            card.querySelector('.character-info').appendChild(equipmentGrid);
+
+            cardContent.appendChild(equipmentGrid);
+            card.appendChild(cardContent);
 
             const backgroundUrl = char.emblemBackgroundPath 
                 ? `https://www.bungie.net${char.emblemBackgroundPath}` 
