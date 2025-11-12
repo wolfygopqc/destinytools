@@ -1806,7 +1806,6 @@
                 const destinyMembershipId = destinyProfile.membershipId;
                 const membershipType = destinyProfile.membershipType;
 
-                const components = [100, 102, 200, 201, 202, 205, 300, 304, 305].join(',');
                 const components = [100, 102, 200, 201, 202, 204, 205, 300, 304, 305].join(',');
 
                 const profileResponse = await fetchWithRetries(`https://www.bungie.net/Platform/Destiny2/${membershipType}/Profile/${destinyMembershipId}/?components=${components}`, {
@@ -2010,7 +2009,7 @@
 
                 // --- Rotations Raid & Donjon ---
                 const featuredRaidHash = 422102671; // Featured Raid
-                const featuredDungeonHash = 3 dungeonhash; // Featured Dungeon
+                const featuredDungeonHash = 3 ; // Featured Dungeon
 
                 const featuredRaidMilestone = publicMilestones[featuredRaidHash];
                 const featuredDungeonMilestone = publicMilestones[featuredDungeonHash];
