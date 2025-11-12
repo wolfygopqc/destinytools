@@ -1108,7 +1108,16 @@
 
         <div id="vaultDisplayContainer" class="content-container hidden">
             <h2>Votre Coffre</h2>
-            <div id="vaultGrid" class="inventory-grid"></div>
+            <div class="tab-controls" id="inventoryTabControls">
+                <button class="tab-button active" data-tab="vaultContent">Coffre</button>
+                <button class="tab-button" data-tab="allWeaponsContent">Toutes les armes</button>
+                <button class="tab-button" data-tab="allArmorContent">Toutes les armures</button>
+            </div>
+            <div id="vaultContent" class="tab-content active">
+                <div id="vaultGrid" class="inventory-grid"></div>
+            </div>
+            <div id="allWeaponsContent" class="tab-content"><div class="inventory-grid"></div></div>
+            <div id="allArmorContent" class="tab-content"><div class="inventory-grid"></div></div>
         </div>
 
         <div id="communityContainer" class="content-container hidden">
@@ -1172,6 +1181,11 @@
             <div id="clanInfo"></div>
         </div>
 
+        <div id="collectionsContainer" class="content-container hidden">
+            <h2>Collections</h2>
+            <div id="collectionsContent"></div>
+        </div>
+
         <div id="historyContainer" class="content-container hidden">
             <h2>Historique des Activités</h2>
             <div id="historyList"></div>
@@ -1227,6 +1241,7 @@
         <a href="#loadoutsContainer" title="Équipements"><span class="nav-text">Loadouts</span></a>
         <a href="#clanLoadoutsContainer" title="Équipements de Clan"><span class="nav-text">Clan Loadouts</span></a>
         <a href="#clanContainer" title="Clan"><span class="nav-text">Clan</span></a>
+        <a href="#collectionsContainer" title="Collections"><span class="nav-text">Collect</span></a>
         <a href="#historyContainer" title="Historique"><span class="nav-text">Historique</span></a>
         <a href="#settingsContainer" title="Paramètres"><span class="nav-text">Paramètres</span></a>
     </nav>
