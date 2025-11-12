@@ -1353,6 +1353,7 @@
         let currentUserInfo = null;
         let refreshIntervalId = null;
         let fullProfileData = null; 
+        let currentUserClanInfo = null;
         let currentLoadoutBuilder = {};
         let userSettings = {
             buttonSounds: true,
@@ -1611,6 +1612,13 @@
 
             addPlayerToHistory({ membershipType, membershipId, displayName, displayCode });
 
+            // Ajout d'un conteneur pour les actions sur le profil
+            const profileActionsDiv = document.createElement('div');
+            profileActionsDiv.id = 'playerProfileActions';
+            profileActionsDiv.style.marginBottom = '20px';
+            profileActionsDiv.style.textAlign = 'right';
+            playerProfileContent.before(profileActionsDiv);
+
             try {
                 const session = getSessionFromCache();
                 const components = [100, 200, 201, 202, 205, 300, 304, 305].join(',');
@@ -1619,6 +1627,22 @@
                 });
                 const profileData = await profileResponse.json();
                 if (profileData.ErrorCode !== 1) throw new Error(profileData.Message);
+
+                // Vérifier si on peut inviter le joueur
+                const canInvite = currentUserClanInfo && currentUserClanInfo.currentUserMemberType >= 3;
+                const targetPlayerClanId = profileData.Response?.profile?.data?.clanName ? profileData.Response.profile.data.clanName : null;
+                const isAlreadyInOurClan = targetPlayerClanId && currentUserClanInfo && targetPlayerClanId === currentUserClanInfo.clanName;
+
+                profileActionsDiv.innerHTML = '';
+                if (canInvite && !isAlreadyInOurClan) {
+                    const inviteButton = document.createElement('button');
+                    inviteButton.className = 'action-button';
+                    inviteButton.textContent = 'Inviter au clan';
+                    inviteButton.onclick = () => {
+                        invitePlayerToClan(currentUserClanInfo.groupId, membershipType, membershipId, `Rejoignez le clan ${currentUserClanInfo.clanName} !`);
+                    };
+                    profileActionsDiv.appendChild(inviteButton);
+                }
 
                 const response = profileData.Response;
                 playerProfileContent.innerHTML = '';
@@ -1637,6 +1661,7 @@
                 }
             } catch (error) {
                 playerProfileContent.innerHTML = `<p style="color: #ff7b7b;">Erreur lors du chargement du profil : ${error.message}</p>`;
+                profileActionsDiv.innerHTML = '';
             }
         }
 
@@ -2045,14 +2070,19 @@
                 const clan = groupsData.Response.results[0].group;
                 const groupId = clan.groupId;
 
+                // Stocker les infos du clan pour une utilisation ultérieure (ex: invitations)
                 let currentUserClanMemberType = 0;
                 if (groupsData.Response.results.length > 0 && groupsData.Response.results[0].member) {
                     currentUserClanMemberType = groupsData.Response.results[0].member.memberType;
                 }
-                if (currentUserInfo && currentUserInfo.bungieGlobalDisplayName === 'WolfyGop' && currentUserInfo.bungieGlobalDisplayNameCode === '6847') {
-                    currentUserClanMemberType = 3; 
-                }
                 const canPerformAdminActions = currentUserClanMemberType >= 3;
+
+                currentUserClanInfo = {
+                    groupId: groupId,
+                    clanName: clan.name,
+                    currentUserMemberType: currentUserClanMemberType,
+                    canPerformAdminActions: canPerformAdminActions
+                };
 
                 let headerHtml = `
                     <div class="clan-header">
@@ -2131,6 +2161,27 @@
                             profileCell.appendChild(profileButton);
                             row.appendChild(profileCell);
 
+                            if (canPerformAdminActions) {
+                                const actionsCell = document.createElement('td');
+                                const memberIsSelf = member.destinyUserInfo.membershipId === currentUserInfo.membershipId;
+
+                                if (!memberIsSelf) {
+                                    const kickButton = document.createElement('button');
+                                    kickButton.textContent = 'Exclure';
+                                    kickButton.className = 'action-button';
+                                    kickButton.style.cssText = 'padding: 5px 8px; font-size: 0.8em; background-color: #c0392b; margin-right: 5px;';
+                                    kickButton.onclick = () => handleClanAction('kick', groupId, member.destinyUserInfo.membershipId, member.destinyUserInfo.membershipType);
+                                    actionsCell.appendChild(kickButton);
+
+                                    const promoteButton = document.createElement('button');
+                                    promoteButton.textContent = 'Gérer';
+                                    promoteButton.className = 'action-button';
+                                    promoteButton.style.cssText = 'padding: 5px 8px; font-size: 0.8em;';
+                                    promoteButton.onclick = () => handleClanAction('manage', groupId, member.destinyUserInfo.membershipId, member.destinyUserInfo.membershipType, member.memberType);
+                                    actionsCell.appendChild(promoteButton);
+                                }
+                                row.appendChild(actionsCell);
+                            }
                             tableBody.appendChild(row);
                         });
                     } else {
@@ -2418,6 +2469,43 @@
                 message += `, membre: ${targetMembershipId}`;
             }
             alert(`Cette fonctionnalité est en cours de développement. ${message}`);
+        }
+
+        async function invitePlayerToClan(groupId, targetMembershipType, targetMembershipId, message) {
+            playButtonClickSound();
+            const session = getSessionFromCache();
+            if (!session) {
+                alert("Vous devez être connecté pour effectuer cette action.");
+                return;
+            }
+
+            if (!confirm(`Voulez-vous vraiment inviter ce joueur dans le clan ?`)) {
+                return;
+            }
+
+            const apiUrl = `https://www.bungie.net/Platform/GroupV2/${groupId}/Invite/Individual/${targetMembershipType}/${targetMembershipId}/`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': BUNGIE_API_KEY,
+                        'Authorization': `Bearer ${session.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+
+                if (data.ErrorCode === 1) {
+                    alert("Invitation envoyée avec succès !");
+                } else {
+                    alert(`Erreur lors de l'envoi de l'invitation : ${data.Message}`);
+                }
+            } catch (error) {
+                alert("Une erreur réseau est survenue lors de l'envoi de l'invitation.");
+            }
         }
 
         async function createCharacterCard(characterId, data, itemInstances, isOwnProfile = false) { 
