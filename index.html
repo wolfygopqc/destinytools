@@ -1370,8 +1370,7 @@
                 'theme',
                 'contentContainer', 'vaultDisplayContainer', 'communityContainer', 'questsContainer',
                 'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer',
-                'vendorsContainer', 'loadoutsContainer', 'clanLoadoutsContainer', 'clanContainer', 'weeklyContainer',
-                'historyContainer'
+                'historyContainer', 'weeklyContainer'
             ],
             sectionVisibility: {} 
             // theme: 'default' a été déplacé dans loadSettings pour une meilleure initialisation
@@ -2009,7 +2008,7 @@
 
                 // --- Rotations Raid & Donjon ---
                 const featuredRaidHash = 422102671; // Featured Raid
-                const featuredDungeonHash = 3 ; // Featured Dungeon
+                const featuredDungeonHash = 3970249374; // Featured Dungeon
 
                 const featuredRaidMilestone = publicMilestones[featuredRaidHash];
                 const featuredDungeonMilestone = publicMilestones[featuredDungeonHash];
@@ -2045,7 +2044,7 @@
 
                 // --- Défis hebdomadaires par personnage ---
                 weeklyHtml += '<h4 style="margin-top: 20px;">Défis hebdomadaires</h4>';
-                const characterMilestones = profileData.milestones.data;
+                const characterProgressionsData = profileData.characterProgressions.data;
                 const classMap = { 0: "Titan", 1: "Chasseur", 2: "Arcaniste" };
 
                 for (const charId in characterMilestones) {
