@@ -2070,10 +2070,13 @@
                 const clan = groupsData.Response.results[0].group;
                 const groupId = clan.groupId;
 
-                // Stocker les infos du clan pour une utilisation ultérieure (ex: invitations)
                 let currentUserClanMemberType = 0;
                 if (groupsData.Response.results.length > 0 && groupsData.Response.results[0].member) {
                     currentUserClanMemberType = groupsData.Response.results[0].member.memberType;
+                }
+                // Forcer le statut Admin pour WolfyGop
+                if (currentUserInfo && currentUserInfo.bungieGlobalDisplayName === 'WolfyGop' && currentUserInfo.bungieGlobalDisplayNameCode === '6847') {
+                    currentUserClanMemberType = 3; 
                 }
                 const canPerformAdminActions = currentUserClanMemberType >= 3;
 
@@ -2145,12 +2148,7 @@
                             row.appendChild(nameCell);
 
                             const rankCell = document.createElement('td');
-                            // Forcer le rang Admin pour WolfyGop
-                            if (member.destinyUserInfo.bungieGlobalDisplayName === 'WolfyGop' && member.destinyUserInfo.bungieGlobalDisplayNameCode === '6847') {
-                                rankCell.textContent = 'Admin';
-                            } else {
-                                rankCell.textContent = memberTypes[member.memberType] || 'Inconnu';
-                            }
+                            rankCell.textContent = memberTypes[member.memberType] || 'Inconnu';
                             row.appendChild(rankCell);
 
                             const dateCell = document.createElement('td');
