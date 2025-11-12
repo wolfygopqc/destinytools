@@ -2145,7 +2145,12 @@
                             row.appendChild(nameCell);
 
                             const rankCell = document.createElement('td');
-                            rankCell.textContent = memberTypes[member.memberType] || 'Inconnu';
+                            // Forcer le rang Admin pour WolfyGop
+                            if (member.destinyUserInfo.bungieGlobalDisplayName === 'WolfyGop' && member.destinyUserInfo.bungieGlobalDisplayNameCode === '6847') {
+                                rankCell.textContent = 'Admin';
+                            } else {
+                                rankCell.textContent = memberTypes[member.memberType] || 'Inconnu';
+                            }
                             row.appendChild(rankCell);
 
                             const dateCell = document.createElement('td');
