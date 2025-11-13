@@ -2063,6 +2063,8 @@
                             const isPowerful = Object.values(milestoneDef.rewards).some(rewardCategory => 
                                 rewardCategory.rewardEntries.some(entry => 
                                     entry.rewardItems.some(item => [3789021730, 4247210736].includes(item.itemHash)) // Puissant / Pinacle
+                                Object.values(rewardCategory.rewardEntries).some(entry => 
+                                    entry.items.some(item => [3789021730, 4247210736].includes(item.itemHash)) // Puissant / Pinacle
                                 )
                             );
 
